@@ -1,13 +1,14 @@
 "use client";
 
-import { CheckCircle2, AlertCircle, Terminal, Copy } from "lucide-react";
+import { CheckCircle2, AlertCircle, Terminal, Copy, AlertTriangle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useConsoleLogs, type LogEntry } from "@/lib/useConsoleLogs";
 
 interface InlineTranslationProgressProps {
   currentLanguage: string | null;
   completedLanguages: string[];
-  failedLanguages: Array<{ code: string; error: string }>;
+  failedLanguages: Array<{ code: string; name: string; error: string }>;
+  warningsLanguages: Array<{ code: string; name: string; warning: string }>;
   totalLanguages: number;
   progress: number; // 0-100
   isTranslating: boolean;
@@ -17,6 +18,7 @@ export default function InlineTranslationProgress({
   currentLanguage,
   completedLanguages,
   failedLanguages,
+  warningsLanguages,
   totalLanguages,
   progress,
   isTranslating,
@@ -86,6 +88,7 @@ export default function InlineTranslationProgress({
 
   const completedCount = completedLanguages.length;
   const failedCount = failedLanguages.length;
+  const warningsCount = warningsLanguages.length;
   const remainingCount = totalLanguages - completedCount - failedCount;
 
   // Don't show if not translating and no progress
@@ -149,9 +152,41 @@ export default function InlineTranslationProgress({
               <div className="ml-6 space-y-1">
                 {failedLanguages.map((failed) => (
                   <div key={failed.code} className="text-xs text-error-text/80">
-                    {failed.code}: {failed.error}
+                    {failed.name} ({failed.code}): {failed.error}
                   </div>
                 ))}
+              </div>
+              <div className="ml-6 text-xs text-error-text/80">
+                Failed languages have been reselected in the Language Selector. Review the errors above and retry with the current selection.
+              </div>
+            </div>
+          )}
+
+          {warningsLanguages.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-warning-text">
+                <AlertTriangle className="w-4 h-4" />
+                <span>
+                  {warningsCount} language{warningsCount !== 1 ? "s" : ""} has warning{warningsCount !== 1 ? "s" : ""}
+                </span>
+              </div>
+              <div className="ml-6 space-y-1">
+                {warningsLanguages.map((warn) => (
+                  <div key={warn.code} className="text-xs text-warning-text/80">
+                    {warn.name} ({warn.code}): {warn.warning}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {warningsLanguages.length > 0 && !isTranslating && completedCount + failedCount === totalLanguages && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-warning-text">
+                <AlertTriangle className="w-4 h-4" />
+                <span>
+                  Translation completed with these languages with warnings: {warningsLanguages.map((warn) => warn.name || warn.code).join(", ")}.
+                </span>
               </div>
             </div>
           )}

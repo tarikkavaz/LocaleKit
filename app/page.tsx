@@ -23,6 +23,7 @@ interface TranslationResult {
   translatedJson: string;
   success: boolean;
   error?: string;
+  warnings?: string[];
 }
 
 // Align translated JSON to the base structure:
@@ -83,7 +84,8 @@ export default function HomePage() {
   const [translationProgress, setTranslationProgress] = useState({
     currentLanguage: null as string | null,
     completed: [] as string[],
-    failed: [] as Array<{ code: string; error: string }>,
+    failed: [] as Array<{ code: string; name: string; error: string }>,
+    warnings: [] as Array<{ code: string; name: string; warning: string }>,
     progress: 0,
   });
   const [translationResults, setTranslationResults] = useState<TranslationResult[]>([]);
@@ -145,6 +147,7 @@ export default function HomePage() {
       currentLanguage: null,
       completed: [],
       failed: [],
+      warnings: [],
       progress: 0,
     });
   };
@@ -162,6 +165,7 @@ export default function HomePage() {
         currentLanguage: null,
         completed: [],
         failed: [],
+        warnings: [],
         progress: 0,
       });
 
@@ -253,6 +257,7 @@ export default function HomePage() {
       currentLanguage: null,
       completed: [],
       failed: [],
+      warnings: [],
       progress: 0,
     });
 
@@ -269,6 +274,22 @@ export default function HomePage() {
     const translator = new UnifiedTranslator(provider, apiKey, model);
     const results: TranslationResult[] = [];
 
+    // TEST MODE: Set to true to test warnings and errors
+    // Specify language codes that should fail, have warnings, or pass
+    const TEST_MODE = false; // Set to true to enable test mode
+    const TEST_FAIL_LANGUAGE = "en_us"; // Language code that will fail
+    const TEST_WARNING_LANGUAGE = "es_es"; // Language code that will have a warning
+    // All other languages will pass normally
+
+    // Resolve which languages to simulate based on the current selection
+    const testFailLangCode = TEST_MODE
+      ? selectedLanguages.find((code) => code === TEST_FAIL_LANGUAGE) ?? selectedLanguages[0]
+      : null;
+    const testWarningLangCode = TEST_MODE
+      ? selectedLanguages.find((code) => code === TEST_WARNING_LANGUAGE && code !== testFailLangCode) ??
+        selectedLanguages.find((code) => code !== testFailLangCode)
+      : null;
+
     // Sequential translation - one language at a time
     for (let i = 0; i < selectedLanguages.length; i++) {
       const langCode = selectedLanguages[i];
@@ -280,11 +301,94 @@ export default function HomePage() {
         completed: results.filter((r) => r.success).map((r) => r.languageCode),
         failed: results
           .filter((r) => !r.success)
-          .map((r) => ({ code: r.languageCode, error: r.error || "Unknown error" })),
+          .map((r) => {
+            const failedLang = getLanguageByCode(r.languageCode);
+            return { code: r.languageCode, name: failedLang?.name || r.languageCode, error: r.error || "Unknown error" };
+          }),
+        warnings: results
+          .filter((r) => r.success && r.warnings?.length)
+          .map((r) => {
+            const warnLang = getLanguageByCode(r.languageCode);
+            return {
+              code: r.languageCode,
+              name: warnLang?.name || r.languageCode,
+              warning: r.warnings?.[0] || "Warning",
+            };
+          }),
         progress: (i / selectedLanguages.length) * 100,
       });
 
       const startTime = Date.now();
+
+      // TEST MODE: Simulate outcomes without calling API
+      if (TEST_MODE) {
+        const simulatedJson = JSON.stringify(jsonContent, null, 2);
+
+        if (langCode === testFailLangCode) {
+          results.push({
+            languageCode: langCode,
+            translatedJson: "",
+            success: false,
+            error: "Test error: Simulated translation failure for testing",
+          });
+
+          setTranslationProgress({
+            currentLanguage: language?.name || langCode,
+            completed: results.filter((r) => r.success).map((r) => r.languageCode),
+            failed: results
+              .filter((r) => !r.success)
+              .map((r) => {
+                const failedLang = getLanguageByCode(r.languageCode);
+                return { code: r.languageCode, name: failedLang?.name || r.languageCode, error: r.error || "Unknown error" };
+              }),
+            warnings: results
+              .filter((r) => r.success && r.warnings?.length)
+              .map((r) => {
+                const warnLang = getLanguageByCode(r.languageCode);
+                return {
+                  code: r.languageCode,
+                  name: warnLang?.name || r.languageCode,
+                  warning: r.warnings?.[0] || "Warning",
+                };
+              }),
+            progress: ((i + 1) / selectedLanguages.length) * 100,
+          });
+
+          continue;
+        }
+
+        const simulatedWarning = langCode === testWarningLangCode;
+        results.push({
+          languageCode: langCode,
+          translatedJson: simulatedJson,
+          success: true,
+          warnings: simulatedWarning ? ["Test warning: Simulated merge failure for testing"] : undefined,
+        });
+
+        setTranslationProgress({
+          currentLanguage: language?.name || langCode,
+          completed: results.filter((r) => r.success).map((r) => r.languageCode),
+          failed: results
+            .filter((r) => !r.success)
+            .map((r) => {
+              const failedLang = getLanguageByCode(r.languageCode);
+              return { code: r.languageCode, name: failedLang?.name || r.languageCode, error: r.error || "Unknown error" };
+            }),
+          warnings: results
+            .filter((r) => r.success && r.warnings?.length)
+            .map((r) => {
+              const warnLang = getLanguageByCode(r.languageCode);
+              return {
+                code: r.languageCode,
+                name: warnLang?.name || r.languageCode,
+                warning: r.warnings?.[0] || "Warning",
+              };
+            }),
+          progress: ((i + 1) / selectedLanguages.length) * 100,
+        });
+
+        continue;
+      }
 
       try {
         console.log(`[Translation] Starting translation for language: ${langCode} (${language?.name || langCode})`);
@@ -318,12 +422,14 @@ export default function HomePage() {
 
         // Merge back with original to preserve any missing keys
         let mergedJsonString = result.translatedJson;
+        let hasWarning = false;
         try {
           const translatedObj = JSON.parse(result.translatedJson);
           const mergedObj = alignToBaseStructure(jsonContent, translatedObj);
           mergedJsonString = JSON.stringify(mergedObj, null, 2);
         } catch (mergeErr) {
           console.error("[Translation] Failed to merge translated JSON, using raw result:", mergeErr);
+          hasWarning = true;
         }
         
         const duration = Date.now() - startTime;
@@ -348,6 +454,7 @@ export default function HomePage() {
           languageCode: langCode,
           translatedJson: mergedJsonString,
           success: true,
+          warnings: hasWarning ? ["Merge failed - using raw translation result"] : undefined,
         });
 
         // Automatically save the file immediately after successful translation
@@ -381,7 +488,20 @@ export default function HomePage() {
           completed: results.filter((r) => r.success).map((r) => r.languageCode),
           failed: results
             .filter((r) => !r.success)
-            .map((r) => ({ code: r.languageCode, error: r.error || "Unknown error" })),
+            .map((r) => {
+              const failedLang = getLanguageByCode(r.languageCode);
+              return { code: r.languageCode, name: failedLang?.name || r.languageCode, error: r.error || "Unknown error" };
+            }),
+          warnings: results
+            .filter((r) => r.success && r.warnings?.length)
+            .map((r) => {
+              const warnLang = getLanguageByCode(r.languageCode);
+              return {
+                code: r.languageCode,
+                name: warnLang?.name || r.languageCode,
+                warning: r.warnings?.[0] || "Warning",
+              };
+            }),
           progress: ((i + 1) / selectedLanguages.length) * 100,
         });
       } catch (err) {
@@ -430,22 +550,70 @@ export default function HomePage() {
           completed: results.filter((r) => r.success).map((r) => r.languageCode),
           failed: results
             .filter((r) => !r.success)
-            .map((r) => ({ code: r.languageCode, error: r.error || "Unknown error" })),
+            .map((r) => {
+              const failedLang = getLanguageByCode(r.languageCode);
+              return { code: r.languageCode, name: failedLang?.name || r.languageCode, error: r.error || "Unknown error" };
+            }),
+        warnings: results
+          .filter((r) => r.success && r.warnings?.length)
+          .map((r) => {
+            const warnLang = getLanguageByCode(r.languageCode);
+            return {
+              code: r.languageCode,
+              name: warnLang?.name || r.languageCode,
+              warning: r.warnings?.[0] || "Warning",
+            };
+          }),
           progress: ((i + 1) / selectedLanguages.length) * 100,
         });
       }
     }
 
     setTranslationResults(results);
+    const failedLanguages = results.filter((r) => !r.success);
+    const warningLanguages = results.filter((r) => r.success && r.warnings?.length);
+    
     setTranslationProgress({
       currentLanguage: null,
       completed: results.filter((r) => r.success).map((r) => r.languageCode),
-      failed: results
-        .filter((r) => !r.success)
-        .map((r) => ({ code: r.languageCode, error: r.error || "Unknown error" })),
+      failed: failedLanguages.map((r) => {
+        const failedLang = getLanguageByCode(r.languageCode);
+        return { code: r.languageCode, name: failedLang?.name || r.languageCode, error: r.error || "Unknown error" };
+      }),
+      warnings: warningLanguages.map((r) => {
+        const warnLang = getLanguageByCode(r.languageCode);
+        return {
+          code: r.languageCode,
+          name: warnLang?.name || r.languageCode,
+          warning: r.warnings?.[0] || "Warning",
+        };
+      }),
       progress: 100,
     });
     setIsTranslating(false);
+
+    // Show messages and auto-deselect languages
+    if (warningLanguages.length > 0) {
+      const warningNames = warningLanguages.map((r) => {
+        const lang = getLanguageByCode(r.languageCode);
+        return lang?.name || r.languageCode;
+      });
+      console.info(`[Translation] Translation completed with these languages with warnings: ${warningNames.join(", ")}.`);
+    }
+
+    if (failedLanguages.length > 0) {
+      const failedNames = failedLanguages.map((r) => {
+        const lang = getLanguageByCode(r.languageCode);
+        return lang?.name || r.languageCode;
+      });
+      console.error(
+        `[Translation] Translation completed with these languages failed: ${failedNames.join(
+          ", "
+        )}. These have been reselected in the Language Selector—review the errors and try again.`
+      );
+      // Deselect all languages except failed ones
+      setSelectedLanguages(failedLanguages.map((r) => r.languageCode));
+    }
   };
 
 
@@ -685,6 +853,7 @@ export default function HomePage() {
               currentLanguage={translationProgress.currentLanguage}
               completedLanguages={translationProgress.completed}
               failedLanguages={translationProgress.failed}
+              warningsLanguages={translationProgress.warnings}
               totalLanguages={selectedLanguages.length}
               progress={translationProgress.progress}
               isTranslating={isTranslating}

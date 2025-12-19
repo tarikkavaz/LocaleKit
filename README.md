@@ -27,7 +27,9 @@ Download the latest release from [GitHub Releases](https://github.com/youruserna
 3. Review and exclude nodes you don't want translated
 4. Select target languages
 5. Click Translate
-6. FIles are saved to the location of the source file
+6. Files are saved to the location of the source file
+7. If any languages fail, they remain selected in the Language Selector so you can retry immediately after reviewing the errors
+8. After completion, you’ll see a summary of languages with warnings so you can inspect them before proceeding
 
 ## Settings
 
