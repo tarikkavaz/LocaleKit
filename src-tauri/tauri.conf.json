@@ -1,0 +1,75 @@
+{
+  "productName": "LocaleKit",
+  "version": "1.0.0",
+  "identifier": "com.localekit",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:3000",
+    "beforeBuildCommand": "pnpm build:tauri",
+    "frontendDist": "../out"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "title": "LocaleKit",
+        "width": 950,
+        "height": 950,
+        "resizable": true,
+        "fullscreen": false,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "visible": true,
+        "center": true,
+        "transparent": true
+      }
+    ],
+    "security": {
+      "csp": null,
+      "capabilities": [
+        {
+          "identifier": "main-window-capability",
+          "windows": ["main"],
+          "permissions": [
+            "core:default",
+            "core:window:allow-start-dragging",
+            "core:window:allow-hide",
+            "core:window:allow-show",
+            "core:webview:allow-create-webview-window",
+            "core:webview:allow-webview-position",
+            "core:webview:allow-webview-size",
+            "shell:allow-open",
+            "os:allow-platform",
+            "dialog:default",
+            "dialog:allow-open",
+            "dialog:allow-save",
+            "process:default",
+            "process:allow-exit"
+          ]
+        }
+      ]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "entitlements": null,
+      "exceptionDomain": null,
+      "frameworks": [],
+      "providerShortName": null,
+      "signingIdentity": "Developer ID Application: Tarik Kavaz (UHLJ8Z3YQA)",
+      "minimumSystemVersion": "10.13",
+      "dmg": {
+        "background": "images/dmg-background.png"
+      }
+    }
+  }
+}

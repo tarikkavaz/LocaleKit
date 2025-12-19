@@ -1,49 +1,61 @@
 # Dependencies
 node_modules/
+.pnp
+.pnp.js
 
-# Build output (Vite)
-dist/
+# Testing
+coverage/
+
+# Next.js
+.next/
 out/
 build/
+dist/
 
-# Vite caches
-.vite/
-
-# Environment files
-.env
-.env.*
-!.env.example
-!.env.sample
-
-# Logs
+# Production
 *.log
+*.pid
+*.seed
+*.pid.lock
+
+# Debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-# IDEs and editors
-.cursor/
+# Local env files
+.env*.local
+.env
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Tauri
+src-tauri/target/
+src-tauri/Cargo.lock
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
 .vscode/
 .idea/
-*.iml
-*.sublime-project
-*.sublime-workspace
-*.code-workspace
-
-# OS noise
-.DS_Store
-.AppleDouble
-.LSOverride
-._*
-Thumbs.db
-Desktop.ini
+*.swp
+*.swo
 *~
 
-# Local scratch / docs you do not want in repo
-_tools
-.notes
+# Build artifacts
+*.dmg
+*.app
+*.deb
+*.rpm
+*.AppImage
 
-# Misc
-nul
+# Tools
+_tools
+.cursor

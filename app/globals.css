@@ -1,0 +1,267 @@
+@import "tailwindcss";
+@plugin '@tailwindcss/typography';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Base colors from custom.css - Light mode with bright backgrounds (default) */
+  --background: oklch(0.99 0.002 240 / 0.90);
+  --foreground: oklch(0.15 0.0128 248.5103);
+  --card: oklch(0.97 0.003 240 / 0.95);
+  --card-foreground: oklch(0.15 0.0128 248.5103);
+  --popover: oklch(0.99 0.002 240 / 0.98);
+  --popover-foreground: oklch(0.15 0.0128 248.5103);
+}
+
+/* Dark mode - Custom theme */
+.dark {
+  /* Base colors from custom.css dark */
+  --background: oklch(0.12 0.005 240 / 0.75);
+  --foreground: oklch(0.9328 0.0025 228.7857);
+  --card: oklch(0.18 0.008 274.5332 / 0.70);
+  --card-foreground: oklch(0.9328 0.0025 228.7857);
+  --popover: oklch(0.12 0.005 240 / 0.90);
+  --popover-foreground: oklch(0.9328 0.0025 228.7857);
+  --primary: oklch(0.3607 0.2097 285.17);
+  --primary-foreground: oklch(1.0 0 0);
+  --secondary: oklch(0.9622 0.0035 219.5331);
+  --secondary-foreground: oklch(0.1884 0.0128 248.5103);
+  --muted: oklch(0.209 0 0);
+  --muted-foreground: oklch(0.5637 0.0078 247.9662);
+  --accent: oklch(0.1928 0.0331 242.5459);
+  --accent-foreground: oklch(0.3607 0.2097 285.17);
+  --destructive: oklch(0.6188 0.2376 25.7658);
+  --destructive-foreground: oklch(1.0 0 0);
+  --border: oklch(0.2674 0.0047 248.0045);
+  --input: oklch(0.302 0.0288 244.8244);
+  --ring: oklch(0.3607 0.2097 285.17);
+
+  /* Map to app color variables */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: oklch(0.50 0.22 285); /* lighter primary for hover */
+  --color-primary-link: var(--primary);
+
+  /* Text colors */
+  --color-text-base: var(--foreground);
+  --color-text-muted: var(--muted-foreground);
+  --color-text-on-primary: var(--primary-foreground);
+  --color-text-link: var(--primary);
+  --color-button-text: var(--primary-foreground);
+
+  /* Prose/Content */
+  --color-prose-text: var(--foreground);
+  --color-code-bg: var(--muted);
+  --color-code-text: var(--foreground);
+  --color-code-pre-bg: var(--muted);
+  --color-code-pre-text: var(--foreground);
+  --color-selection: oklch(0.5789 0.1899 140.8644 / 0.3);
+  --color-placeholder: var(--muted-foreground);
+
+  /* UI Elements */
+  --color-modal-backdrop: rgba(0, 0, 0, 0.5);
+  --color-card-bg: var(--card);
+  --color-tooltip-bg: var(--muted);
+  --color-divider: var(--border);
+
+  /* Alert/Status colors - Info/Blue (dark) */
+  --color-info-bg: oklch(0.267 0.068 265.75 / 0.2);
+  --color-info-border: oklch(0.367 0.131 265.633);
+  --color-info-text: oklch(0.858 0.076 253.524);
+  --color-info-icon: oklch(0.858 0.076 253.524);
+
+  /* Alert/Status colors - Warning/Yellow (dark) */
+  --color-warning-bg: oklch(0.488 0.13 82.837 / 0.2);
+  --color-warning-border: oklch(0.455 0.107 73.324);
+  --color-warning-text: oklch(0.933 0.108 99.014);
+  --color-warning-icon: oklch(0.933 0.108 99.014);
+
+  /* Alert/Status colors - Success/Green (dark) */
+  --color-success-bg: oklch(0.333 0.115 140 / 0.2);
+  --color-success-border: oklch(0.413 0.148 140);
+  --color-success-text: oklch(0.75 0.15 140);
+  --color-success-icon: oklch(0.75 0.15 140);
+
+  /* Alert/Status colors - Error/Red (dark) */
+  --color-error-bg: oklch(0.393 0.163 28.004 / 0.2);
+  --color-error-border: oklch(0.478 0.194 27.325);
+  --color-error-text: oklch(0.849 0.136 24.151);
+  --color-error-icon: var(--destructive);
+
+  /* Solid backgrounds for modals and dropdowns (100% opacity) */
+  --card-bg-solid: oklch(0.18 0.008 274.5332);
+  --background-solid: oklch(0.12 0.005 240);
+}
+
+/* Light mode must come AFTER dark mode to ensure proper override */
+html.light,
+.light {
+  /* Light mode - explicitly override any dark mode values */
+  --background: oklch(0.99 0.002 240 / 0.90);
+  --foreground: oklch(0.15 0.0128 248.5103);
+  --card: oklch(0.97 0.003 240 / 0.95);
+  --card-foreground: oklch(0.15 0.0128 248.5103);
+  --popover: oklch(0.99 0.002 240 / 0.98);
+  --popover-foreground: oklch(0.15 0.0128 248.5103);
+  --primary: oklch(0.3607 0.2097 285.17);
+  --primary-foreground: oklch(1.0 0 0);
+  --secondary: oklch(0.1884 0.0128 248.5103);
+  --secondary-foreground: oklch(1.0 0 0);
+  --muted: oklch(0.95 0.002 240);
+  --muted-foreground: oklch(0.40 0.0128 248.5103);
+  --accent: oklch(0.9392 0.0166 250.8453);
+  --accent-foreground: oklch(0.3607 0.2097 285.17);
+  --destructive: oklch(0.6188 0.2376 25.7658);
+  --destructive-foreground: oklch(1.0 0 0);
+  --border: oklch(0.88 0.008 240);
+  --input: oklch(0.97 0.003 240);
+  --ring: oklch(0.3607 0.2097 285.17);
+
+  /* Map to app color variables */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: oklch(0.4789 0.1599 140.8644); /* darker primary for hover */
+  --color-primary-link: var(--primary);
+
+  /* Text colors */
+  --color-text-base: var(--foreground);
+  --color-text-muted: var(--muted-foreground);
+  --color-text-on-primary: var(--primary-foreground);
+  --color-text-link: var(--primary);
+  --color-button-text: var(--primary-foreground);
+
+  /* Prose/Content */
+  --color-prose-text: var(--foreground);
+  --color-code-bg: var(--muted);
+  --color-code-text: var(--muted-foreground);
+  --color-code-pre-bg: var(--muted);
+  --color-code-pre-text: var(--foreground);
+  --color-selection: oklch(0.5789 0.1899 140.8644 / 0.3);
+  --color-placeholder: var(--muted-foreground);
+
+  /* UI Elements */
+  --color-modal-backdrop: rgba(0, 0, 0, 0.5);
+  --color-card-bg: var(--card);
+  --color-tooltip-bg: var(--muted-foreground);
+  --color-divider: var(--border);
+
+  /* Alert/Status colors - Info/Blue */
+  --color-info-bg: oklch(0.955 0.024 254.604);
+  --color-info-border: oklch(0.885 0.071 254.946);
+  --color-info-text: oklch(0.367 0.131 265.633);
+  --color-info-icon: oklch(0.367 0.131 265.633);
+
+  /* Alert/Status colors - Warning/Yellow */
+  --color-warning-bg: oklch(0.981 0.024 97.433);
+  --color-warning-border: oklch(0.932 0.111 99.572);
+  --color-warning-text: oklch(0.455 0.107 73.324);
+  --color-warning-icon: oklch(0.455 0.107 73.324);
+
+  /* Alert/Status colors - Success/Green */
+  --color-success-bg: oklch(0.976 0.025 140);
+  --color-success-border: oklch(0.913 0.065 140);
+  --color-success-text: oklch(0.45 0.15 140);
+  --color-success-icon: oklch(0.45 0.15 140);
+
+  /* Alert/Status colors - Error/Red */
+  --color-error-bg: oklch(0.971 0.022 17.396);
+  --color-error-border: oklch(0.898 0.095 18.334);
+  --color-error-text: oklch(0.478 0.194 27.325);
+  --color-error-icon: var(--destructive);
+
+  /* Solid backgrounds for modals and dropdowns (100% opacity) */
+  --card-bg-solid: oklch(0.97 0.003 240);
+  --background-solid: oklch(0.99 0.002 240);
+}
+
+/* Tailwind theme integration */
+@theme {
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--color-primary-hover);
+
+  /* Additional text colors */
+  --color-text-base: var(--color-text-base);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-on-primary: var(--color-text-on-primary);
+  --color-text-link: var(--color-text-link);
+  --color-button-text: var(--color-button-text);
+
+  /* UI element colors */
+  --color-card-bg: var(--color-card-bg);
+  --color-tooltip-bg: var(--color-tooltip-bg);
+  --color-divider: var(--color-divider);
+
+  /* Status colors */
+  --color-info-bg: var(--color-info-bg);
+  --color-info-border: var(--color-info-border);
+  --color-info-text: var(--color-info-text);
+
+  --color-warning-bg: var(--color-warning-bg);
+  --color-warning-border: var(--color-warning-border);
+  --color-warning-text: var(--color-warning-text);
+
+  --color-success-bg: var(--color-success-bg);
+  --color-success-border: var(--color-success-border);
+  --color-success-text: var(--color-success-text);
+
+  --color-error-bg: var(--color-error-bg);
+  --color-error-border: var(--color-error-border);
+  --color-error-text: var(--color-error-text);
+}
+
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure all clickable controls show pointer */
+button,
+[role="button"],
+select,
+option {
+  cursor: pointer;
+}
+
+/* Custom prose styling - only CSS variable overrides needed */
+.prose {
+  color: var(--color-prose-text);
+}
+
+.prose code {
+  background-color: var(--color-code-bg);
+  color: var(--color-code-text);
+}
+
+.prose code::before,
+.prose code::after {
+  content: none;
+}
+
+.prose pre {
+  background-color: var(--color-code-pre-bg);
+}
+
+.prose pre code {
+  background-color: transparent;
+  color: var(--color-code-pre-text);
+}
+
+.prose a {
+  color: var(--color-primary-link);
+}
+
+.prose strong,
+.prose b {
+  color: var(--color-prose-text);
+  font-weight: 600;
+}
