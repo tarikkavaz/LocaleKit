@@ -41,10 +41,13 @@ Configure API keys and manage languages in Settings:
 
 
 ![screenshot-01](screenshot-01.png)
+> Lading file and JSON Structure 
 
 ![screenshot-02](screenshot-02.png)
+> Selecting languages 
 
 ![screenshot-03](screenshot-03.png)
+> Translation progress and logs
 
 ## Development
 
