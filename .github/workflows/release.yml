@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v4
         if: steps.precheck.outputs.version == ''
         with:
-          fetch-depth: 1  # Minimal checkout to get commit message
+          fetch-depth: 1 # Minimal checkout to get commit message
 
       - name: Check commit message via git (fallback)
         id: precheck-git
@@ -64,7 +64,7 @@ jobs:
       - uses: actions/checkout@v4
         if: steps.precheck.outputs.version != '' || steps.precheck-git.outputs.version != ''
         with:
-          fetch-depth: 0  # Fetch full history for proper tag handling
+          fetch-depth: 0 # Fetch full history for proper tag handling
 
       - name: Extract version from commit message
         id: extract
@@ -132,27 +132,27 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin'
-            target: 'aarch64-apple-darwin'
-          - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin'
-            target: 'x86_64-apple-darwin'
-          - platform: 'ubuntu-22.04'
-            args: ''
-            target: 'x86_64-unknown-linux-gnu'
-          - platform: 'ubuntu-22.04-arm'
-            args: ''
-            target: 'aarch64-unknown-linux-gnu'
-          - platform: 'windows-latest'
-            args: ''
-            target: 'x86_64-pc-windows-msvc'
+          - platform: "macos-latest"
+            args: "--target aarch64-apple-darwin"
+            target: "aarch64-apple-darwin"
+          - platform: "macos-latest"
+            args: "--target x86_64-apple-darwin"
+            target: "x86_64-apple-darwin"
+          - platform: "ubuntu-22.04"
+            args: ""
+            target: "x86_64-unknown-linux-gnu"
+          - platform: "ubuntu-22.04-arm"
+            args: ""
+            target: "aarch64-unknown-linux-gnu"
+          - platform: "windows-latest"
+            args: ""
+            target: "x86_64-pc-windows-msvc"
 
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch full history including tags
+          fetch-depth: 0 # Fetch full history including tags
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -163,7 +163,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
+          cache: "pnpm"
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -360,7 +360,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch full history including tags
+          fetch-depth: 0 # Fetch full history including tags
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4

@@ -5,7 +5,10 @@ export interface UsageEntry {
   timestamp: number;
   provider: Provider;
   model: string;
-  tokens?: number;
+  tokens?: number; // legacy total tokens
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
   duration: number; // milliseconds
   success: boolean;
   error?: string;
@@ -82,7 +85,9 @@ export function clearUsageHistory(): void {
 /**
  * Calculate usage statistics
  */
-export function calculateUsageStats(entries: UsageEntry[] = getUsageHistory()): UsageStats {
+export function calculateUsageStats(
+  entries: UsageEntry[] = getUsageHistory()
+): UsageStats {
   const stats: UsageStats = {
     totalRequests: entries.length,
     successfulRequests: entries.filter((e) => e.success).length,
@@ -100,18 +105,21 @@ export function calculateUsageStats(entries: UsageEntry[] = getUsageHistory()): 
 
   for (const entry of entries) {
     stats.totalDuration += entry.duration;
-    stats.totalTokens += entry.tokens || 0;
+    const entryTotalTokens = entry.totalTokens ?? entry.tokens ?? 0;
+    stats.totalTokens += entryTotalTokens;
 
     const modelInfo = getModelById(entry.model);
-    if (modelInfo?.costPer1kTokens && entry.tokens) {
-      const avgCost = (modelInfo.costPer1kTokens.input + modelInfo.costPer1kTokens.output) / 2;
-      const cost = (entry.tokens / 1000) * avgCost;
+    if (modelInfo?.costPer1kTokens && entryTotalTokens) {
+      const avgCost =
+        (modelInfo.costPer1kTokens.input + modelInfo.costPer1kTokens.output) /
+        2;
+      const cost = (entryTotalTokens / 1000) * avgCost;
       stats.estimatedCost += cost;
       stats.byProvider[entry.provider].cost += cost;
     }
 
     stats.byProvider[entry.provider].requests++;
-    stats.byProvider[entry.provider].tokens += entry.tokens || 0;
+    stats.byProvider[entry.provider].tokens += entryTotalTokens;
     stats.byProvider[entry.provider].duration += entry.duration;
   }
 

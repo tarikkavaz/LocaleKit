@@ -4,210 +4,174 @@
  */
 
 /**
- * Convert JSON object to TOON format
+ * Convert JSON to brace-less, comma-delimited TOON:
+ * key,<value> for primitives
+ * key,          (no value) for nested objects/arrays; children are indented
+ * arrays render as key, then children lines prefixed with "- "
  */
-export function jsonToToon(obj: any, indent: string = ""): string {
-  if (obj === null) {
-    return "null";
-  }
+export function jsonToToon(obj: any, indent = ""): string {
+  const next = indent + "  ";
 
-  if (typeof obj === "string") {
-    // Escape quotes and newlines
-    return `"${obj.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`;
-  }
+  const renderValue = (value: any, valueIndent: string): string => {
+    if (value === null) return "null";
+    if (typeof value === "number" || typeof value === "boolean")
+      return String(value);
+    if (typeof value === "string") {
+      // quote only if needed
+      if (/[,\n"]/.test(value) || /^\s|\s$/.test(value)) {
+        return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n")}"`;
+      }
+      return value;
+    }
+    if (Array.isArray(value)) {
+      if (value.length === 0) return "[]";
+      const items = value
+        .map((item) => {
+          if (item !== null && typeof item === "object") {
+            return `${valueIndent}-\n${jsonToToon(item, valueIndent + "  ")}`;
+          }
+          return `${valueIndent}- ${renderValue(item, valueIndent + "  ")}`;
+        })
+        .join("\n");
+      return `\n${items}`;
+    }
+    // object
+    const keys = Object.keys(value);
+    if (keys.length === 0) return "{}";
+    return `\n${jsonToToon(value, valueIndent)}`;
+  };
 
-  if (typeof obj === "number" || typeof obj === "boolean") {
-    return String(obj);
-  }
-
+  const lines: string[] = [];
   if (Array.isArray(obj)) {
-    if (obj.length === 0) {
-      return "[]";
+    for (const item of obj) {
+      if (item !== null && typeof item === "object") {
+        lines.push(`${indent}-`);
+        lines.push(jsonToToon(item, indent + "  "));
+      } else {
+        lines.push(`${indent}- ${renderValue(item, indent + "  ")}`);
+      }
     }
-    const items = obj.map((item) => `${indent}  ${jsonToToon(item, indent + "  ")}`).join("\n");
-    return `[\n${items}\n${indent}]`;
+    return lines.join("\n");
   }
 
-  if (typeof obj === "object") {
-    const keys = Object.keys(obj);
-    if (keys.length === 0) {
-      return "{}";
+  for (const key of Object.keys(obj)) {
+    const value = obj[key];
+    if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+      lines.push(`${indent}${key},`);
+      lines.push(jsonToToon(value, next));
+    } else if (Array.isArray(value)) {
+      lines.push(`${indent}${key},${renderValue(value, next)}`);
+    } else {
+      lines.push(`${indent}${key},${renderValue(value, next)}`);
     }
-    const items = keys
-      .map((key) => {
-        const value = jsonToToon(obj[key], indent + "  ");
-        return `${indent}${key}: ${value}`;
-      })
-      .join("\n");
-    return `{\n${items}\n${indent}}`;
   }
 
-  return String(obj);
+  return lines.join("\n");
 }
 
 /**
- * Convert TOON format back to JSON object
- * Simplified parser that handles the basic TOON format
+ * Parse brace-less, comma-delimited TOON back to JSON.
  */
 export function toonToJson(toon: string): any {
-  toon = toon.trim();
-  if (!toon) {
-    throw new Error("Empty TOON content");
-  }
+  const lines = toon.split("\n").filter((l) => l.trim().length > 0);
+  if (lines.length === 0) throw new Error("Empty TOON content");
 
-  // Handle primitive values
-  if (toon === "null") return null;
-  if (toon === "true") return true;
-  if (toon === "false") return false;
-  
-  // Handle numbers
-  if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(toon)) {
-    return Number(toon);
-  }
+  type Frame = { type: "object" | "array"; indent: number; value: any };
+  const root: Frame = { type: "object", indent: -1, value: {} };
+  const stack: Frame[] = [root];
 
-  // Handle quoted strings
-  if (toon.startsWith('"') && toon.endsWith('"')) {
-    return toon.slice(1, -1)
-      .replace(/\\\\/g, "\\")
-      .replace(/\\"/g, '"')
-      .replace(/\\n/g, "\n");
-  }
-
-  // Handle arrays (TOON format with brackets)
-  if (toon.startsWith("[") && toon.endsWith("]")) {
-    const content = toon.slice(1, -1).trim();
-    if (!content) return [];
-    
-    const items: any[] = [];
-    const lines = content.split("\n");
-    let currentItem = "";
-    let depth = 0;
-    let inString = false;
-    let escapeNext = false;
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed && !currentItem) continue;
-
-      // Remove indentation
-      const dedented = trimmed.replace(/^  +/, "");
-      
-      for (const char of dedented) {
-        if (escapeNext) {
-          currentItem += char;
-          escapeNext = false;
-          continue;
-        }
-        if (char === "\\") {
-          escapeNext = true;
-          currentItem += char;
-          continue;
-        }
-        if (char === '"') {
-          inString = !inString;
-          currentItem += char;
-          continue;
-        }
-        if (inString) {
-          currentItem += char;
-          continue;
-        }
-        if (char === "[" || char === "{") {
-          depth++;
-          currentItem += char;
-          continue;
-        }
-        if (char === "]" || char === "}") {
-          depth--;
-          currentItem += char;
-          continue;
-        }
-        currentItem += char;
-      }
-
-      // If depth is 0 and we have content, it's a complete item
-      if (depth === 0 && currentItem.trim()) {
-        items.push(toonToJson(currentItem.trim()));
-        currentItem = "";
-      } else if (depth > 0) {
-        currentItem += "\n" + dedented;
-      }
+  const parseValue = (raw: string): any => {
+    const t = raw.trim();
+    if (t === "null") return null;
+    if (t === "true") return true;
+    if (t === "false") return false;
+    if (/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(t)) return Number(t);
+    if (t.startsWith('"') && t.endsWith('"')) {
+      return t
+        .slice(1, -1)
+        .replace(/\\n/g, "\n")
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, "\\");
     }
-    
-    if (currentItem.trim()) {
-      items.push(toonToJson(currentItem.trim()));
+    return t;
+  };
+
+  const pushObject = (indent: number) => {
+    const obj = {};
+    stack.push({ type: "object", indent, value: obj });
+    return obj;
+  };
+
+  const pushArray = (indent: number) => {
+    const arr: any[] = [];
+    stack.push({ type: "array", indent, value: arr });
+    return arr;
+  };
+
+  for (const rawLine of lines) {
+    const indent = rawLine.length - rawLine.trimStart().length;
+    let line = rawLine.trim();
+
+    while (stack.length > 1 && indent <= stack[stack.length - 1].indent) {
+      stack.pop();
     }
-    
-    return items;
-  }
 
-  // Handle objects (TOON format without braces, just key: value)
-  const lines = toon.split("\n");
-  if (lines.length === 1 && !toon.includes(":")) {
-    // Single value, try JSON fallback
-    try {
-      return JSON.parse(toon);
-    } catch {
-      throw new Error(`Invalid TOON format: ${toon.substring(0, 100)}`);
-    }
-  }
+    const current = stack[stack.length - 1];
 
-  // Parse as object with key: value pairs
-  const obj: any = {};
-  let currentKey: string | null = null;
-  let currentValue = "";
-  let valueIndent = -1;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    // Calculate indentation level
-    const indent = line.length - line.trimStart().length;
-    
-    // Check if this line has a colon (key: value)
-    const colonIndex = trimmed.indexOf(":");
-    if (colonIndex > 0 && (valueIndent === -1 || indent <= valueIndent)) {
-      // Save previous key-value
-      if (currentKey !== null && currentValue.trim()) {
-        obj[currentKey] = toonToJson(currentValue.trim());
-      }
-      
-      // Start new key-value
-      currentKey = trimmed.slice(0, colonIndex).trim();
-      const valuePart = trimmed.slice(colonIndex + 1).trim();
-      
-      if (valuePart) {
-        // Value on same line
-        currentValue = valuePart;
-        valueIndent = indent;
+    if (line.startsWith("-")) {
+      const itemText = line.slice(1).trim();
+      let item: any;
+      if (itemText === "") {
+        item = pushObject(indent + 1);
       } else {
-        // Value on next lines
-        currentValue = "";
-        valueIndent = indent + 2; // Next level of indentation
+        item = parseValue(itemText);
       }
-    } else if (currentKey !== null && indent >= valueIndent) {
-      // Continuation of current value
-      if (currentValue) {
-        currentValue += "\n" + trimmed;
-      } else {
-        currentValue = trimmed;
+      if (current.type !== "array") {
+        // convert current to array if not already
+        const newArr: any[] = [];
+        if (current.type === "object") {
+          // cannot append anonymous items to object; treat as array fallback
+          current.value = newArr;
+          current.type = "array";
+        }
       }
+      (current.value as any[]).push(item);
+      continue;
+    }
+
+    const commaIdx = line.indexOf(",");
+    if (commaIdx === -1) {
+      // fallback: treat as value line
+      if (current.type === "array") {
+        (current.value as any[]).push(parseValue(line));
+      }
+      continue;
+    }
+
+    const key = line.slice(0, commaIdx).trim();
+    const rest = line.slice(commaIdx + 1);
+    const hasValue = rest.trim().length > 0;
+
+    if (current.type !== "object") {
+      // promote to object if needed
+      const obj = {};
+      const parent = stack[stack.length - 2];
+      if (parent?.type === "array") {
+        parent.value[parent.value.length - 1] = obj;
+        current.type = "object";
+        current.value = obj;
+      }
+    }
+
+    if (hasValue) {
+      const val = parseValue(rest);
+      (current.value as any)[key] = val;
+    } else {
+      // nested structure
+      const obj = pushObject(indent + 1);
+      (current.value as any)[key] = obj;
     }
   }
 
-  // Save last key-value
-  if (currentKey !== null && currentValue.trim()) {
-    obj[currentKey] = toonToJson(currentValue.trim());
-  }
-
-  return Object.keys(obj).length > 0 ? obj : (() => {
-    // Fallback: try JSON
-    try {
-      return JSON.parse(toon);
-    } catch {
-      throw new Error(`Invalid TOON format: ${toon.substring(0, 100)}`);
-    }
-  })();
+  return root.value;
 }

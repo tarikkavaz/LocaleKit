@@ -1,0 +1,139 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "confirm": "Confirm",
+    "reload": "Reload",
+    "quit": "Quit",
+    "about": "About",
+    "settings": "Settings",
+    "default": "Default"
+  },
+  "homePage": {
+    "selectFile": "Select JSON File",
+    "selectDifferentFile": "Select Different File",
+    "translate": "Translate",
+    "translating": "Translating...",
+    "selectModel": "Select an AI Model",
+    "selectedFile": "Selected file:",
+    "errorSelectFile": "Please select a file and at least one language",
+    "errorApiKey": "Please add your {provider} API key in Settings",
+    "errorInvalidJson": "Invalid JSON file. Please select a valid JSON file.",
+    "errorFailedSelect": "Failed to select file"
+  },
+  "header": {
+    "title": "LocaleKit",
+    "subtitle": "AI-powered i18n translator",
+    "tooltipReload": "Reload and clear cache",
+    "tooltipSettings": "Settings",
+    "tooltipAboutQuit": "About / Quit"
+  },
+  "about": {
+    "title": "About LocaleKit",
+    "description": "LocaleKit is an AI-powered i18n translator that helps you translate JSON files into multiple languages using advanced AI models.",
+    "author": "Tarik Kavaz"
+  },
+  "reloadConfirm": {
+    "title": "Reload and Clear Cache",
+    "message": "This will clear the current file and restart the app. Continue?"
+  },
+  "quitConfirm": {
+    "title": "Quit Application",
+    "message": "Are you sure you want to quit LocaleKit? Any unsaved changes will be lost."
+  },
+  "languageSelector": {
+    "title": "Select Languages",
+    "selected": "{count} of {total} selected",
+    "searchPlaceholder": "Search languages...",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "noLanguagesFound": "No languages found"
+  },
+  "translationProgress": {
+    "title": "Translation Progress",
+    "completed": "{count} of {total} completed",
+    "progress": "{percent}%",
+    "translating": "Translating: {language}",
+    "completedCount": "{count} {count, plural, =1 {language} other {languages}} completed",
+    "failedCount": "{count} {count, plural, =1 {language} other {languages}} failed",
+    "warningsCount": "{count} {count, plural, =1 {language has warning} other {languages have warnings}}",
+    "remaining": "{count} {count, plural, =1 {language} other {languages}} remaining",
+    "failedReselected": "Failed languages have been reselected in the Language Selector. Review the errors above and retry with the current selection.",
+    "completedWithWarnings": "Translation completed with these languages with warnings: {languages}.",
+    "translationLogs": "Translation Logs",
+    "copyLogs": "Copy logs to clipboard",
+    "toggleLogs": "Click to {action}",
+    "open": "open",
+    "close": "close",
+    "noLogs": "No logs yet..."
+  },
+  "settings": {
+    "title": "Settings",
+    "tabs": {
+      "appSettings": "App Settings",
+      "languages": "Translation Languages",
+      "apiKeys": "API Keys",
+      "usage": "Usage"
+    },
+    "appSettings": {
+      "title": "App Settings",
+      "selectLanguage": "Select Language",
+      "languageDescription": "Choose your preferred language for the app interface"
+    },
+    "languages": {
+      "addCustom": "Add Custom Language",
+      "codePlaceholder": "Language code (e.g., en_us)",
+      "namePlaceholder": "Language name (e.g., English US)",
+      "add": "Add Language",
+      "allLanguages": "All Languages",
+      "enterBoth": "Please enter both code and name",
+      "invalidCode": "Invalid language code format. Use format: xx_xx (e.g., en_us)",
+      "deleteConfirm": "Delete language",
+      "deleteMessage": "Remove the language \"{code}\" from the list?",
+      "failedAdd": "Failed to add language",
+      "failedUpdate": "Failed to update language",
+      "failedDelete": "Failed to delete language"
+    },
+    "apiKeys": {
+      "openai": "OpenAI API Key",
+      "anthropic": "Anthropic API Key",
+      "mistral": "Mistral API Key",
+      "openrouter": "OpenRouter API Key",
+      "getKeyOpenai": "Get your API key from OpenAI Platform",
+      "getKeyAnthropic": "Get your API key from Anthropic Console",
+      "getKeyMistral": "Get your API key from Mistral Console",
+      "getKeyOpenrouter": "Free account + API key unlock free models (no credit card)",
+      "placeholder": "Enter your {label}",
+      "secureStorage": "API keys are stored securely using OS-level secure storage and never leave your device.",
+      "failedSave": "Failed to save API keys securely. Please try again."
+    },
+    "usage": {
+      "title": "Usage Statistics",
+      "description": "Based on local history; costs are estimated from model pricing.",
+      "lastDays": "Last {days}d",
+      "totalRequests": "Total requests",
+      "successRate": "Success rate",
+      "avgDuration": "Avg duration",
+      "estCost": "Est. cost",
+      "byProvider": "By provider",
+      "requests": "{count} requests",
+      "tokens": "Tokens",
+      "avgTime": "Avg time",
+      "cost": "Cost",
+      "estimatedNote": "Estimated tokens are derived from character length; costs use model pricing where available.",
+      "clearHistory": "Clear usage history",
+      "clearConfirm": "Clear usage history?"
+    }
+  },
+  "errors": {
+    "unknown": "Unknown error",
+    "timeout": "Timeout detected - file may be too large or API is slow"
+  }
+}

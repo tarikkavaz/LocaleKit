@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { Search, CheckSquare, Square } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { getAllLanguages, type Language } from "@/lib/languages";
 
 interface LanguageSelectorProps {
@@ -15,6 +16,8 @@ export default function LanguageSelector({
   onSelectionChange,
   excludeLanguageCode,
 }: LanguageSelectorProps) {
+  const t = useTranslations("languageSelector");
+  const tCommon = useTranslations("common");
   const [searchQuery, setSearchQuery] = useState("");
   const allLanguages = getAllLanguages().filter(
     (lang) => lang.code !== excludeLanguageCode
@@ -64,10 +67,13 @@ export default function LanguageSelector({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-foreground">Select Languages</h3>
+        <h3 className="text-sm font-medium text-foreground">{t("title")}</h3>
         <div className="flex items-center gap-2 text-xs text-foreground/60">
           <span>
-            {selectedLanguages.length} of {allLanguages.length} selected
+            {t("selected", {
+              count: selectedLanguages.length,
+              total: allLanguages.length,
+            })}
           </span>
         </div>
       </div>
@@ -76,7 +82,7 @@ export default function LanguageSelector({
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-foreground/40" />
         <input
           type="text"
-          placeholder="Search languages..."
+          placeholder={t("searchPlaceholder")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground transition-colors placeholder:text-muted-foreground text-sm"
@@ -88,21 +94,21 @@ export default function LanguageSelector({
           onClick={selectAll}
           className="text-xs text-foreground/60 hover:text-foreground transition-colors"
         >
-          Select All
+          {t("selectAll")}
         </button>
         <span className="text-xs text-foreground/40">|</span>
         <button
           onClick={deselectAll}
           className="text-xs text-foreground/60 hover:text-foreground transition-colors"
         >
-          Deselect All
+          {t("deselectAll")}
         </button>
       </div>
 
       <div className="bg-card border border-border rounded-lg p-4 max-h-96 overflow-y-auto">
         {filteredLanguages.length === 0 ? (
           <p className="text-sm text-foreground/60 text-center py-4">
-            No languages found
+            {t("noLanguagesFound")}
           </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -117,14 +123,14 @@ export default function LanguageSelector({
                   }`}
                 >
                   {selected ? (
-                    <CheckSquare 
-                      className="w-4 h-4 flex-shrink-0" 
-                      style={{ 
+                    <CheckSquare
+                      className="w-4 h-4 shrink-0"
+                      style={{
                         color: "oklch(0.75 0.22 285)",
-                      }} 
+                      }}
                     />
                   ) : (
-                    <Square className="w-4 h-4 text-foreground/40 flex-shrink-0" />
+                    <Square className="w-4 h-4 text-foreground/40 shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-foreground">
@@ -136,7 +142,7 @@ export default function LanguageSelector({
                   </div>
                   {lang.isDefault && (
                     <span className="text-xs text-foreground/40 px-1.5 py-0.5 bg-foreground/5 rounded">
-                      Default
+                      {tCommon("default")}
                     </span>
                   )}
                 </button>

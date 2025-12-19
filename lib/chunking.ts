@@ -15,7 +15,7 @@ export interface Chunk {
  */
 export function chunkJson(
   jsonObj: any,
-  maxChunkSizeBytes: number = 15000, // ~15KB per chunk to stay well under 60s webview timeout
+  maxChunkSizeBytes: number = 27000, // ~27KB per chunk after TOON size reduction
   excludedPaths: string[] = []
 ): Chunk[] {
   const chunks: Chunk[] = [];
@@ -62,7 +62,10 @@ export function chunkJson(
       }
 
       // If adding this item would exceed limit, save current chunk
-      if (currentSize + itemSize > maxChunkSizeBytes && currentChunk.length > 0) {
+      if (
+        currentSize + itemSize > maxChunkSizeBytes &&
+        currentChunk.length > 0
+      ) {
         chunks.push({
           key: `[${startIndex}-${i - 1}]`,
           data: currentChunk,
@@ -120,7 +123,10 @@ export function chunkJson(
       // In the future, we could recursively chunk large values
 
       // If adding this key would exceed limit, save current chunk
-      if (currentSize + valueSize > maxChunkSizeBytes && Object.keys(currentChunk).length > 0) {
+      if (
+        currentSize + valueSize > maxChunkSizeBytes &&
+        Object.keys(currentChunk).length > 0
+      ) {
         chunks.push({
           key: chunkKeys.join(","),
           data: currentChunk,
@@ -155,7 +161,10 @@ export function chunkJson(
 /**
  * Merge translated chunks back into a single JSON object
  */
-export function mergeChunks(chunks: Array<{ key: string; data: any }>, originalStructure: any): any {
+export function mergeChunks(
+  chunks: Array<{ key: string; data: any }>,
+  originalStructure: any
+): any {
   // Start with a deep copy of the original structure to preserve excluded paths
   const result = JSON.parse(JSON.stringify(originalStructure));
 

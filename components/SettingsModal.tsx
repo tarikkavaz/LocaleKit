@@ -1,7 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings, X, Plus, Trash2, Edit2, BarChart3, TrendingUp, Clock, DollarSign } from "lucide-react";
+import {
+  Settings,
+  X,
+  Plus,
+  Trash2,
+  Edit2,
+  BarChart3,
+  TrendingUp,
+  Clock,
+  DollarSign,
+} from "lucide-react";
+import { useTranslations } from "next-intl";
 import { open } from "@tauri-apps/plugin-shell";
 import type { Provider } from "@/lib/types";
 import { deleteKey, getKey, setKey } from "@/lib/secure-keys";
@@ -15,6 +26,13 @@ import {
 } from "@/lib/languages";
 import { isTauri } from "@/lib/utils";
 import { clearUsageHistory, getUsageStatsForPeriod } from "@/lib/usage-tracker";
+import {
+  getAvailableLocales,
+  getLocaleName,
+  getStoredLocale,
+  setStoredLocale,
+} from "@/lib/i18n/locale";
+import CustomSelect from "@/components/CustomSelect";
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -25,33 +43,23 @@ interface SettingsModalProps {
 
 const API_KEY_CONFIG: Array<{
   provider: Provider;
-  label: string;
   url: string;
-  description: string;
 }> = [
   {
     provider: "openai",
-    label: "OpenAI API Key",
     url: "https://platform.openai.com/api-keys",
-    description: "Get your API key from OpenAI Platform",
   },
   {
     provider: "anthropic",
-    label: "Anthropic API Key",
     url: "https://console.anthropic.com/settings/keys",
-    description: "Get your API key from Anthropic Console",
   },
   {
     provider: "mistral",
-    label: "Mistral API Key",
     url: "https://console.mistral.ai/api-keys/",
-    description: "Get your API key from Mistral Console",
   },
   {
     provider: "openrouter",
-    label: "OpenRouter API Key",
     url: "https://openrouter.ai/keys",
-    description: "Free account + API key unlock free models (no credit card)",
   },
 ];
 
@@ -61,8 +69,14 @@ export default function SettingsModal({
   onSave,
   currentApiKeys,
 }: SettingsModalProps) {
-  const [apiKeys, setApiKeys] = useState<Record<Provider, string>>(currentApiKeys);
-  const [activeTab, setActiveTab] = useState<"languages" | "api-keys" | "usage">("api-keys");
+  const t = useTranslations("settings");
+  const tCommon = useTranslations("common");
+
+  const [apiKeys, setApiKeys] =
+    useState<Record<Provider, string>>(currentApiKeys);
+  const [activeTab, setActiveTab] = useState<
+    "app-settings" | "languages" | "api-keys" | "usage"
+  >("app-settings");
   const [languages, setLanguages] = useState<Language[]>(getAllLanguages());
   const [editingLanguage, setEditingLanguage] = useState<Language | null>(null);
   const [newLanguageCode, setNewLanguageCode] = useState("");
@@ -71,11 +85,45 @@ export default function SettingsModal({
   const [usagePeriod, setUsagePeriod] = useState<7 | 30 | 90>(30);
   const [usageRefreshKey, setUsageRefreshKey] = useState(0);
   const usageStats = getUsageStatsForPeriod(usagePeriod);
-  const [pendingDeleteCode, setPendingDeleteCode] = useState<string | null>(null);
+  const [pendingDeleteCode, setPendingDeleteCode] = useState<string | null>(
+    null
+  );
+  const [selectedLocale, setSelectedLocale] = useState<string>("en_gb");
+  const availableLocales = getAvailableLocales();
 
   useEffect(() => {
     setIsTauriApp(isTauri());
   }, []);
+
+  useEffect(() => {
+    // Load current locale preference
+    const loadLocale = async () => {
+      try {
+        // Add overall timeout for the entire operation
+        const timeoutPromise = new Promise<void>((resolve) =>
+          setTimeout(() => {
+            resolve();
+          }, 3000)
+        );
+
+        const localePromise = (async () => {
+          const stored = await getStoredLocale();
+          if (stored) {
+            setSelectedLocale(stored);
+          }
+        })();
+
+        await Promise.race([localePromise, timeoutPromise]);
+      } catch (error) {
+        // Silently handle errors
+      }
+    };
+    if (isOpen) {
+      loadLocale().catch(() => {
+        // Silently handle errors
+      });
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     setApiKeys(currentApiKeys);
@@ -105,22 +153,44 @@ export default function SettingsModal({
         }
       }
 
+      // Save locale preference
+      await setStoredLocale(selectedLocale);
+
+      // Dispatch locale change event
+      window.dispatchEvent(
+        new CustomEvent("locale-change", { detail: selectedLocale })
+      );
+
       onSave(apiKeys);
       onClose();
     } catch (error) {
-      console.error("Failed to save API keys:", error);
-      alert("Failed to save API keys securely. Please try again.");
+      console.error("Failed to save settings:", error);
+      alert(t("apiKeys.failedSave"));
+    }
+  };
+
+  const handleLocaleChange = async (locale: string) => {
+    setSelectedLocale(locale);
+    // Save immediately
+    try {
+      await setStoredLocale(locale);
+      // Dispatch locale change event
+      window.dispatchEvent(
+        new CustomEvent("locale-change", { detail: locale })
+      );
+    } catch (error) {
+      console.error("Failed to save locale:", error);
     }
   };
 
   const handleAddLanguage = () => {
     if (!newLanguageCode.trim() || !newLanguageName.trim()) {
-      alert("Please enter both code and name");
+      alert(t("languages.enterBoth"));
       return;
     }
 
     if (!validateLanguageCode(newLanguageCode)) {
-      alert("Invalid language code format. Use format: xx_xx (e.g., en_us)");
+      alert(t("languages.invalidCode"));
       return;
     }
 
@@ -130,7 +200,7 @@ export default function SettingsModal({
       setNewLanguageCode("");
       setNewLanguageName("");
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to add language");
+      alert(error instanceof Error ? error.message : t("languages.failedAdd"));
     }
   };
 
@@ -138,21 +208,27 @@ export default function SettingsModal({
     if (!editingLanguage) return;
 
     if (!editingLanguage.code.trim() || !editingLanguage.name.trim()) {
-      alert("Please enter both code and name");
+      alert(t("languages.enterBoth"));
       return;
     }
 
     if (!validateLanguageCode(editingLanguage.code)) {
-      alert("Invalid language code format. Use format: xx_xx (e.g., en_us)");
+      alert(t("languages.invalidCode"));
       return;
     }
 
     try {
-      updateCustomLanguage(oldCode, editingLanguage.code.trim(), editingLanguage.name.trim());
+      updateCustomLanguage(
+        oldCode,
+        editingLanguage.code.trim(),
+        editingLanguage.name.trim()
+      );
       setLanguages(getAllLanguages());
       setEditingLanguage(null);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to update language");
+      alert(
+        error instanceof Error ? error.message : t("languages.failedUpdate")
+      );
     }
   };
 
@@ -166,14 +242,16 @@ export default function SettingsModal({
       deleteCustomLanguage(pendingDeleteCode);
       setLanguages(getAllLanguages());
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to delete language");
+      alert(
+        error instanceof Error ? error.message : t("languages.failedDelete")
+      );
     } finally {
       setPendingDeleteCode(null);
     }
   };
 
   const handleClearUsage = () => {
-    if (!confirm("Clear usage history?")) return;
+    if (!confirm(t("usage.clearConfirm"))) return;
     clearUsageHistory();
     setUsageRefreshKey((k) => k + 1);
   };
@@ -190,7 +268,9 @@ export default function SettingsModal({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <div
@@ -207,7 +287,9 @@ export default function SettingsModal({
             <div className="p-2 bg-primary/10 rounded-lg">
               <Settings className="w-5 h-5 text-primary" />
             </div>
-            <h2 className="text-xl font-semibold text-foreground">Settings</h2>
+            <h2 className="text-xl font-semibold text-foreground">
+              {t("title")}
+            </h2>
           </div>
           <button
             type="button"
@@ -223,57 +305,95 @@ export default function SettingsModal({
         <div className="flex border-b border-border">
           <button
             type="button"
-            onClick={() => setActiveTab("languages")}
+            onClick={() => setActiveTab("app-settings")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
-              activeTab === "languages"
-                ? "text-primary border-b-2 border-primary"
+              activeTab === "app-settings"
+                ? "bg-primary text-button-text border-b-2 border-primary"
                 : "text-foreground/60 hover:text-foreground"
             }`}
           >
-            Languages
+            {t("tabs.appSettings")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("languages")}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
+              activeTab === "languages"
+                ? "bg-primary text-button-text border-b-2 border-primary"
+                : "text-foreground/60 hover:text-foreground"
+            }`}
+          >
+            {t("tabs.languages")}
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("api-keys")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
               activeTab === "api-keys"
-                ? "text-primary border-b-2 border-primary"
+                ? "bg-primary text-button-text border-b-2 border-primary"
                 : "text-foreground/60 hover:text-foreground"
             }`}
           >
-            API Keys
+            {t("tabs.apiKeys")}
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("usage")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors cursor-pointer ${
               activeTab === "usage"
-                ? "text-primary border-b-2 border-primary"
+                ? "bg-primary text-button-text border-b-2 border-primary"
                 : "text-foreground/60 hover:text-foreground"
             }`}
           >
-            Usage
+            {t("tabs.usage")}
           </button>
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSave} className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
+        <form
+          onSubmit={handleSave}
+          className="p-6 space-y-6 max-h-[60vh] overflow-y-auto"
+        >
+          {/* App Settings Tab */}
+          {activeTab === "app-settings" && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-foreground">
+                  {t("appSettings.selectLanguage")}
+                </label>
+                <CustomSelect
+                  value={selectedLocale}
+                  onChange={handleLocaleChange}
+                  options={availableLocales.map((locale) => ({
+                    value: locale,
+                    label: getLocaleName(locale),
+                  }))}
+                />
+                <p className="text-xs text-foreground/60">
+                  {t("appSettings.languageDescription")}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Languages Tab */}
           {activeTab === "languages" && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <h3 className="text-sm font-medium text-foreground">Add Custom Language</h3>
+                <h3 className="text-sm font-medium text-foreground">
+                  {t("languages.addCustom")}
+                </h3>
                 <div className="grid grid-cols-2 gap-2">
                   <input
                     type="text"
-                    placeholder="Language code (e.g., en_us)"
+                    placeholder={t("languages.codePlaceholder")}
                     value={newLanguageCode}
                     onChange={(e) => setNewLanguageCode(e.target.value)}
                     className="px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground text-sm"
                   />
                   <input
                     type="text"
-                    placeholder="Language name (e.g., English US)"
+                    placeholder={t("languages.namePlaceholder")}
                     value={newLanguageName}
                     onChange={(e) => setNewLanguageName(e.target.value)}
                     className="px-3 py-2 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground text-sm"
@@ -285,12 +405,14 @@ export default function SettingsModal({
                   className="px-4 py-2 text-sm font-medium bg-primary text-button-text rounded-lg hover:bg-primary-hover transition-colors flex items-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
-                  Add Language
+                  {t("languages.add")}
                 </button>
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-sm font-medium text-foreground">All Languages</h3>
+                <h3 className="text-sm font-medium text-foreground">
+                  {t("languages.allLanguages")}
+                </h3>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {languages.map((lang) => {
                     const isEditing = editingLanguage?.code === lang.code;
@@ -305,7 +427,10 @@ export default function SettingsModal({
                               type="text"
                               value={editingLanguage.code}
                               onChange={(e) =>
-                                setEditingLanguage({ ...editingLanguage, code: e.target.value })
+                                setEditingLanguage({
+                                  ...editingLanguage,
+                                  code: e.target.value,
+                                })
                               }
                               className="flex-1 px-2 py-1 bg-background border border-border rounded text-sm text-foreground"
                             />
@@ -313,7 +438,10 @@ export default function SettingsModal({
                               type="text"
                               value={editingLanguage.name}
                               onChange={(e) =>
-                                setEditingLanguage({ ...editingLanguage, name: e.target.value })
+                                setEditingLanguage({
+                                  ...editingLanguage,
+                                  name: e.target.value,
+                                })
                               }
                               className="flex-1 px-2 py-1 bg-background border border-border rounded text-sm text-foreground"
                             />
@@ -322,38 +450,46 @@ export default function SettingsModal({
                               onClick={() => handleUpdateLanguage(lang.code)}
                               className="px-2 py-1 text-xs bg-primary text-button-text rounded"
                             >
-                              Save
+                              {tCommon("save")}
                             </button>
                             <button
                               type="button"
                               onClick={() => setEditingLanguage(null)}
                               className="px-2 py-1 text-xs bg-foreground/10 text-foreground rounded"
                             >
-                              Cancel
+                              {tCommon("cancel")}
                             </button>
                           </>
                         ) : (
                           <>
                             <div className="flex-1">
-                              <div className="text-sm font-medium text-foreground">{lang.name}</div>
-                              <div className="text-xs text-foreground/60 font-mono">{lang.code}</div>
+                              <div className="text-sm font-medium text-foreground">
+                                {lang.name}
+                              </div>
+                              <div className="text-xs text-foreground/60 font-mono">
+                                {lang.code}
+                              </div>
                             </div>
                             {lang.isDefault ? (
                               <span className="text-xs text-foreground/40 px-2 py-1 bg-foreground/5 rounded">
-                                Default
+                                {tCommon("default")}
                               </span>
                             ) : (
                               <>
                                 <button
                                   type="button"
-                                  onClick={() => setEditingLanguage({ ...lang })}
+                                  onClick={() =>
+                                    setEditingLanguage({ ...lang })
+                                  }
                                   className="p-1 hover:bg-foreground/10 rounded"
                                 >
                                   <Edit2 className="w-4 h-4 text-foreground/60" />
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => handleDeleteLanguage(lang.code)}
+                                  onClick={() =>
+                                    handleDeleteLanguage(lang.code)
+                                  }
                                   className="p-1 hover:bg-foreground/10 rounded"
                                 >
                                   <Trash2 className="w-4 h-4 text-error-text" />
@@ -380,9 +516,11 @@ export default function SettingsModal({
                 className="relative w-full max-w-md mx-4 bg-card-bg rounded-lg shadow-xl p-6"
                 style={{ backgroundColor: "var(--card-bg-solid)" }}
               >
-                <h2 className="text-xl font-semibold text-foreground mb-3">Delete language</h2>
+                <h2 className="text-xl font-semibold text-foreground mb-3">
+                  {t("languages.deleteConfirm")}
+                </h2>
                 <p className="text-sm text-foreground/80 mb-4">
-                  Remove the language &quot;{pendingDeleteCode}&quot; from the list?
+                  {t("languages.deleteMessage", { code: pendingDeleteCode })}
                 </p>
                 <div className="flex gap-3">
                   <button
@@ -390,14 +528,14 @@ export default function SettingsModal({
                     onClick={() => setPendingDeleteCode(null)}
                     className="flex-1 px-4 py-2 text-sm font-medium bg-foreground/10 text-foreground rounded-lg hover:bg-foreground/20 transition-colors"
                   >
-                    Cancel
+                    {tCommon("cancel")}
                   </button>
                   <button
                     type="button"
                     onClick={confirmDeleteLanguage}
                     className="flex-1 px-4 py-2 text-sm font-medium bg-error-text text-black rounded-lg hover:brightness-110 transition-colors"
                   >
-                    Delete
+                    {tCommon("delete")}
                   </button>
                 </div>
               </div>
@@ -407,35 +545,44 @@ export default function SettingsModal({
           {/* API Keys Tab */}
           {activeTab === "api-keys" && (
             <div className="space-y-4">
-              {API_KEY_CONFIG.map((config) => (
-                <div key={config.provider} className="space-y-2">
-                  <label
-                    htmlFor={`apiKey-${config.provider}`}
-                    className="block text-sm font-medium text-foreground"
-                  >
-                    {config.label}
-                  </label>
-                  <input
-                    id={`apiKey-${config.provider}`}
-                    type="password"
-                    value={apiKeys[config.provider]}
-                    onChange={(e) => handleApiKeyChange(config.provider, e.target.value)}
-                    placeholder={`Enter your ${config.label}`}
-                    className="w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground transition-colors text-sm placeholder:text-muted-foreground"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleOpenAPIKey(config.url)}
-                    className="inline-flex items-center text-xs text-foreground/60 hover:text-foreground hover:underline cursor-pointer"
-                  >
-                    {config.description} →
-                  </button>
-                </div>
-              ))}
+              {API_KEY_CONFIG.map((config) => {
+                const providerKey = config.provider;
+                const providerLabel = t(`apiKeys.${providerKey}` as any);
+                const getKeyLabel = t(
+                  `apiKeys.getKey${providerKey.charAt(0).toUpperCase() + providerKey.slice(1)}` as any
+                );
+                return (
+                  <div key={config.provider} className="space-y-2">
+                    <label
+                      htmlFor={`apiKey-${config.provider}`}
+                      className="block text-sm font-medium text-foreground"
+                    >
+                      {providerLabel}
+                    </label>
+                    <input
+                      id={`apiKey-${config.provider}`}
+                      type="password"
+                      value={apiKeys[config.provider]}
+                      onChange={(e) =>
+                        handleApiKeyChange(config.provider, e.target.value)
+                      }
+                      placeholder={t("apiKeys.placeholder", {
+                        label: providerLabel,
+                      })}
+                      className="w-full px-4 py-2.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground transition-colors text-sm placeholder:text-muted-foreground"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleOpenAPIKey(config.url)}
+                      className="inline-flex items-center text-xs text-foreground/60 hover:text-foreground hover:underline cursor-pointer"
+                    >
+                      {getKeyLabel} →
+                    </button>
+                  </div>
+                );
+              })}
               <div className="flex items-start gap-2 text-xs text-foreground/60 pt-2">
-                <p className="flex-1">
-                  API keys are stored securely using OS-level secure storage and never leave your device.
-                </p>
+                <p className="flex-1">{t("apiKeys.secureStorage")}</p>
               </div>
             </div>
           )}
@@ -448,9 +595,11 @@ export default function SettingsModal({
                   <BarChart3 className="w-4 h-4 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">Usage Statistics</h3>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {t("usage.title")}
+                  </h3>
                   <p className="text-xs text-foreground/60">
-                    Based on local history; costs are estimated from model pricing.
+                    {t("usage.description")}
                   </p>
                 </div>
               </div>
@@ -467,7 +616,7 @@ export default function SettingsModal({
                         : "bg-foreground/5 text-foreground/70 hover:bg-foreground/10"
                     }`}
                   >
-                    Last {days}d
+                    {t("usage.lastDays", { days })}
                   </button>
                 ))}
               </div>
@@ -476,7 +625,7 @@ export default function SettingsModal({
                 <div className="p-4 bg-foreground/5 rounded-lg">
                   <div className="flex items-center gap-2 text-xs text-foreground/60 mb-1">
                     <TrendingUp className="w-3.5 h-3.5" />
-                    <span>Total requests</span>
+                    <span>{t("usage.totalRequests")}</span>
                   </div>
                   <p className="text-2xl font-bold text-foreground">
                     {usageStats.totalRequests}
@@ -486,11 +635,15 @@ export default function SettingsModal({
                 <div className="p-4 bg-foreground/5 rounded-lg">
                   <div className="flex items-center gap-2 text-xs text-foreground/60 mb-1">
                     <BarChart3 className="w-3.5 h-3.5" />
-                    <span>Success rate</span>
+                    <span>{t("usage.successRate")}</span>
                   </div>
                   <p className="text-2xl font-bold text-success-text">
                     {usageStats.totalRequests > 0
-                      ? Math.round((usageStats.successfulRequests / usageStats.totalRequests) * 100)
+                      ? Math.round(
+                          (usageStats.successfulRequests /
+                            usageStats.totalRequests) *
+                            100
+                        )
                       : 0}
                     %
                   </p>
@@ -499,11 +652,15 @@ export default function SettingsModal({
                 <div className="p-4 bg-foreground/5 rounded-lg">
                   <div className="flex items-center gap-2 text-xs text-foreground/60 mb-1">
                     <Clock className="w-3.5 h-3.5" />
-                    <span>Avg duration</span>
+                    <span>{t("usage.avgDuration")}</span>
                   </div>
                   <p className="text-2xl font-bold text-foreground">
                     {usageStats.totalRequests > 0
-                      ? (usageStats.totalDuration / usageStats.totalRequests / 1000).toFixed(1)
+                      ? (
+                          usageStats.totalDuration /
+                          usageStats.totalRequests /
+                          1000
+                        ).toFixed(1)
                       : 0}
                     s
                   </p>
@@ -512,7 +669,7 @@ export default function SettingsModal({
                 <div className="p-4 bg-foreground/5 rounded-lg">
                   <div className="flex items-center gap-2 text-xs text-foreground/60 mb-1">
                     <DollarSign className="w-3.5 h-3.5" />
-                    <span>Est. cost</span>
+                    <span>{t("usage.estCost")}</span>
                   </div>
                   <p className="text-2xl font-bold text-foreground">
                     ${usageStats.estimatedCost.toFixed(3)}
@@ -521,51 +678,67 @@ export default function SettingsModal({
               </div>
 
               <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-foreground">By provider</h4>
-                {(Object.entries(usageStats.byProvider) as [Provider, (typeof usageStats.byProvider)[Provider]][]).map(
-                  ([provider, data]) => {
-                    if (data.requests === 0) return null;
-                    return (
-                      <div key={provider} className="p-4 bg-foreground/5 rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-foreground uppercase">
-                            {provider}
-                          </span>
-                          <span className="text-xs text-foreground/60">
-                            {data.requests} requests
-                          </span>
+                <h4 className="text-sm font-semibold text-foreground">
+                  {t("usage.byProvider")}
+                </h4>
+                {(
+                  Object.entries(usageStats.byProvider) as [
+                    Provider,
+                    (typeof usageStats.byProvider)[Provider],
+                  ][]
+                ).map(([provider, data]) => {
+                  if (data.requests === 0) return null;
+                  return (
+                    <div
+                      key={provider}
+                      className="p-4 bg-foreground/5 rounded-lg"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-foreground uppercase">
+                          {provider}
+                        </span>
+                        <span className="text-xs text-foreground/60">
+                          {t("usage.requests", { count: data.requests })}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4 text-xs">
+                        <div>
+                          <div className="text-foreground/60">
+                            {t("usage.tokens")}
+                          </div>
+                          <div className="font-semibold text-foreground mt-0.5">
+                            {data.tokens.toLocaleString()}
+                          </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-4 text-xs">
-                          <div>
-                            <div className="text-foreground/60">Tokens</div>
-                            <div className="font-semibold text-foreground mt-0.5">
-                              {data.tokens.toLocaleString()}
-                            </div>
+                        <div>
+                          <div className="text-foreground/60">
+                            {t("usage.avgTime")}
                           </div>
-                          <div>
-                            <div className="text-foreground/60">Avg time</div>
-                            <div className="font-semibold text-foreground mt-0.5">
-                              {data.requests > 0
-                                ? (data.duration / data.requests / 1000).toFixed(1)
-                                : 0}
-                              s
-                            </div>
+                          <div className="font-semibold text-foreground mt-0.5">
+                            {data.requests > 0
+                              ? (data.duration / data.requests / 1000).toFixed(
+                                  1
+                                )
+                              : 0}
+                            s
                           </div>
-                          <div>
-                            <div className="text-foreground/60">Cost</div>
-                            <div className="font-semibold text-foreground mt-0.5">
-                              ${data.cost.toFixed(3)}
-                            </div>
+                        </div>
+                        <div>
+                          <div className="text-foreground/60">
+                            {t("usage.cost")}
+                          </div>
+                          <div className="font-semibold text-foreground mt-0.5">
+                            ${data.cost.toFixed(3)}
                           </div>
                         </div>
                       </div>
-                    );
-                  }
-                )}
+                    </div>
+                  );
+                })}
               </div>
 
               <div className="p-4 bg-info-bg border border-info-border rounded-lg text-xs text-info-text">
-                Estimated tokens are derived from character length; costs use model pricing where available.
+                {t("usage.estimatedNote")}
               </div>
 
               <div className="pt-2">
@@ -575,7 +748,7 @@ export default function SettingsModal({
                   className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-error-text hover:bg-error-bg rounded-lg transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
-                  Clear usage history
+                  {t("usage.clearHistory")}
                 </button>
               </div>
             </div>
@@ -588,13 +761,13 @@ export default function SettingsModal({
               onClick={onClose}
               className="flex-1 px-4 py-2 text-sm font-medium text-foreground hover:bg-foreground/5 rounded-lg transition-colors"
             >
-              Cancel
+              {tCommon("cancel")}
             </button>
             <button
               type="submit"
               className="flex-1 px-4 py-2 text-sm font-medium bg-primary text-button-text rounded-lg hover:bg-primary-hover transition-colors"
             >
-              Save
+              {tCommon("save")}
             </button>
           </div>
         </form>

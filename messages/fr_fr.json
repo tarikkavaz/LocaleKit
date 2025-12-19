@@ -1,0 +1,139 @@
+{
+  "common": {
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "close": "Fermer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Réussite",
+    "warning": "Avertissement",
+    "confirm": "Confirmer",
+    "reload": "Recharger",
+    "quit": "Quitter",
+    "about": "À propos",
+    "settings": "Paramètres",
+    "default": "Par défaut"
+  },
+  "homePage": {
+    "selectFile": "Sélectionner un fichier JSON",
+    "selectDifferentFile": "Sélectionner un fichier différent",
+    "translate": "Traduire",
+    "translating": "Traduction en cours...",
+    "selectModel": "Sélectionner un modèle IA",
+    "selectedFile": "Fichier sélectionné :",
+    "errorSelectFile": "Veuillez sélectionner un fichier et au moins une langue",
+    "errorApiKey": "Veuillez ajouter votre clé API {provider} dans les Paramètres",
+    "errorInvalidJson": "Fichier JSON invalide. Veuillez sélectionner un fichier JSON valide.",
+    "errorFailedSelect": "Échec de la sélection du fichier"
+  },
+  "header": {
+    "title": "LocaleKit",
+    "subtitle": "Traducteur i18n alimenté par IA",
+    "tooltipReload": "Recharger et vider le cache",
+    "tooltipSettings": "Paramètres",
+    "tooltipAboutQuit": "À propos / Quitter"
+  },
+  "about": {
+    "title": "À propos de LocaleKit",
+    "description": "LocaleKit est un traducteur i18n alimenté par IA qui vous aide à traduire des fichiers JSON en plusieurs langues en utilisant des modèles IA avancés.",
+    "author": "Tarik Kavaz"
+  },
+  "reloadConfirm": {
+    "title": "Recharger et vider le cache",
+    "message": "Cela va vider le fichier actuel et redémarrer l'application. Continuer ?"
+  },
+  "quitConfirm": {
+    "title": "Quitter l'application",
+    "message": "Êtes-vous sûr de vouloir quitter LocaleKit ? Tous les changements non enregistrés seront perdus."
+  },
+  "languageSelector": {
+    "title": "Sélectionner les langues",
+    "selected": "{count} sur {total} sélectionnés",
+    "searchPlaceholder": "Rechercher des langues...",
+    "selectAll": "Sélectionner tout",
+    "deselectAll": "Désélectionner tout",
+    "noLanguagesFound": "Aucune langue trouvée"
+  },
+  "translationProgress": {
+    "title": "Progression de la traduction",
+    "completed": "{count} sur {total} terminé",
+    "progress": "{percent}%",
+    "translating": "Traduction : {language}",
+    "completedCount": "{count} {count, plural, =1 {langue} other {langues}} terminé",
+    "failedCount": "{count} {count, plural, =1 {langue} other {langues}} échoué",
+    "warningsCount": "{count} {count, plural, =1 {langue a un avertissement} other {langues ont des avertissements}}",
+    "remaining": "{count} {count, plural, =1 {langue} other {langues}} restantes",
+    "failedReselected": "Les langues échouées ont été re-sélectionnées dans le sélecteur de langues. Examinez les erreurs ci-dessus et réessayez avec la sélection actuelle.",
+    "completedWithWarnings": "Traduction terminée avec ces langues avec avertissements : {languages}.",
+    "translationLogs": "Journaux de traduction",
+    "copyLogs": "Copier les journaux dans le presse-papiers",
+    "toggleLogs": "Cliquez pour {action}",
+    "open": "ouvrir",
+    "close": "fermer",
+    "noLogs": "Aucun journal pour le moment..."
+  },
+  "settings": {
+    "title": "Settings",
+    "tabs": {
+      "appSettings": "App Settings",
+      "languages": "Translation Languages",
+      "apiKeys": "API Keys",
+      "usage": "Usage"
+    },
+    "appSettings": {
+      "title": "App Settings",
+      "selectLanguage": "Select Language",
+      "languageDescription": "Choose your preferred language for the app interface"
+    },
+    "languages": {
+      "addCustom": "Add Custom Language",
+      "codePlaceholder": "Language code (e.g., en_us)",
+      "namePlaceholder": "Language name (e.g., English US)",
+      "add": "Add Language",
+      "allLanguages": "All Languages",
+      "enterBoth": "Please enter both code and name",
+      "invalidCode": "Invalid language code format. Use format: xx_xx (e.g., en_us)",
+      "deleteConfirm": "Delete language",
+      "deleteMessage": "Remove the language \"{code}\" from the list?",
+      "failedAdd": "Failed to add language",
+      "failedUpdate": "Failed to update language",
+      "failedDelete": "Failed to delete language"
+    },
+    "apiKeys": {
+      "openai": "OpenAI API Key",
+      "anthropic": "Anthropic API Key",
+      "mistral": "Mistral API Key",
+      "openrouter": "OpenRouter API Key",
+      "getKeyOpenai": "Get your API key from OpenAI Platform",
+      "getKeyAnthropic": "Get your API key from Anthropic Console",
+      "getKeyMistral": "Get your API key from Mistral Console",
+      "getKeyOpenrouter": "Free account + API key unlock free models (no credit card)",
+      "placeholder": "Enter your {label}",
+      "secureStorage": "API keys are stored securely using OS-level secure storage and never leave your device.",
+      "failedSave": "Failed to save API keys securely. Please try again."
+    },
+    "usage": {
+      "title": "Usage Statistics",
+      "description": "Based on local history; costs are estimated from model pricing.",
+      "lastDays": "Last {days}d",
+      "totalRequests": "Total requests",
+      "successRate": "Success rate",
+      "avgDuration": "Avg duration",
+      "estCost": "Est. cost",
+      "byProvider": "By provider",
+      "requests": "{count} requests",
+      "tokens": "Tokens",
+      "avgTime": "Avg time",
+      "cost": "Cost",
+      "estimatedNote": "Estimated tokens are derived from character length; costs use model pricing where available.",
+      "clearHistory": "Clear usage history",
+      "clearConfirm": "Clear usage history?"
+    }
+  },
+  "errors": {
+    "unknown": "Unknown error",
+    "timeout": "Timeout detected - file may be too large or API is slow"
+  }
+}

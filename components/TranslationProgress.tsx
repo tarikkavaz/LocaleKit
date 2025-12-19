@@ -96,12 +96,14 @@ export default function TranslationProgress({
         {/* Body */}
         <div className="flex-1 flex flex-col overflow-hidden p-6 space-y-6">
           {/* Progress Bar */}
-          <div className="space-y-2 flex-shrink-0">
+          <div className="space-y-2 shrink-0">
             <div className="flex items-center justify-between text-sm">
               <span className="text-foreground">
                 {completedCount} of {totalLanguages} completed
               </span>
-              <span className="text-foreground/60">{Math.round(progress)}%</span>
+              <span className="text-foreground/60">
+                {Math.round(progress)}%
+              </span>
             </div>
             <div className="w-full bg-foreground/10 rounded-full h-2 overflow-hidden">
               <div
@@ -113,7 +115,7 @@ export default function TranslationProgress({
 
           {/* Current Language */}
           {currentLanguage && (
-            <div className="p-4 bg-info-bg border border-info-border rounded-lg flex-shrink-0">
+            <div className="p-4 bg-info-bg border border-info-border rounded-lg shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-info-icon rounded-full animate-pulse" />
                 <span className="text-sm font-medium text-info-text">
@@ -125,11 +127,15 @@ export default function TranslationProgress({
 
           {/* Console Logs */}
           <div className="flex-1 flex flex-col min-h-0 border border-border rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between p-3 border-b border-border bg-foreground/5 flex-shrink-0">
+            <div className="flex items-center justify-between p-3 border-b border-border bg-foreground/5 shrink-0">
               <div className="flex items-center gap-2">
                 <Terminal className="w-4 h-4 text-foreground" />
-                <span className="text-sm font-medium text-foreground">Console Logs</span>
-                <span className="text-xs text-foreground/60">({logs.length} entries)</span>
+                <span className="text-sm font-medium text-foreground">
+                  Console Logs
+                </span>
+                <span className="text-xs text-foreground/60">
+                  ({logs.length} entries)
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <label className="flex items-center gap-1 text-xs text-foreground/60 cursor-pointer">
@@ -153,23 +159,34 @@ export default function TranslationProgress({
             <div
               ref={logContainerRef}
               className="flex-1 overflow-y-auto p-4 font-mono text-xs select-text"
-              style={{ 
+              style={{
                 backgroundColor: "var(--card-bg-solid)",
                 userSelect: "text",
-                WebkitUserSelect: "text"
+                WebkitUserSelect: "text",
               }}
             >
               {logs.length === 0 ? (
-                <div className="text-center text-foreground/60 py-8">No logs yet...</div>
+                <div className="text-center text-foreground/60 py-8">
+                  No logs yet...
+                </div>
               ) : (
                 <div className="space-y-1">
                   {logs.map((log, index) => (
-                    <div key={index} className="flex gap-2 items-start select-text">
-                      <span className="text-foreground/40 flex-shrink-0 select-text">{log.timestamp}</span>
-                      <span className={`flex-shrink-0 font-semibold select-text ${getLogColor(log.level)}`}>
+                    <div
+                      key={index}
+                      className="flex gap-2 items-start select-text"
+                    >
+                      <span className="text-foreground/40 shrink-0 select-text">
+                        {log.timestamp}
+                      </span>
+                      <span
+                        className={`shrink-0 font-semibold select-text ${getLogColor(log.level)}`}
+                      >
                         [{log.level.toUpperCase()}]
                       </span>
-                      <span className="text-foreground/80 break-words flex-1 whitespace-pre-wrap select-text">{log.message}</span>
+                      <span className="text-foreground/80 wrap-break-words flex-1 whitespace-pre-wrap select-text">
+                        {log.message}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -178,12 +195,13 @@ export default function TranslationProgress({
           </div>
 
           {/* Status Summary */}
-          <div className="space-y-2 flex-shrink-0">
+          <div className="space-y-2 shrink-0">
             {completedLanguages.length > 0 && (
               <div className="flex items-center gap-2 text-sm text-success-text">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>
-                  {completedCount} language{completedCount !== 1 ? "s" : ""} completed
+                  {completedCount} language{completedCount !== 1 ? "s" : ""}{" "}
+                  completed
                 </span>
               </div>
             )}
@@ -198,7 +216,10 @@ export default function TranslationProgress({
                 </div>
                 <div className="ml-6 space-y-1">
                   {failedLanguages.map((failed) => (
-                    <div key={failed.code} className="text-xs text-error-text/80">
+                    <div
+                      key={failed.code}
+                      className="text-xs text-error-text/80"
+                    >
                       {failed.code}: {failed.error}
                     </div>
                   ))}
@@ -208,22 +229,24 @@ export default function TranslationProgress({
 
             {remainingCount > 0 && !currentLanguage && (
               <div className="text-sm text-foreground/60">
-                {remainingCount} language{remainingCount !== 1 ? "s" : ""} remaining
+                {remainingCount} language{remainingCount !== 1 ? "s" : ""}{" "}
+                remaining
               </div>
             )}
           </div>
 
           {/* Completed State */}
-          {!currentLanguage && completedCount + failedCount === totalLanguages && (
-            <div className="pt-4 border-t border-border flex-shrink-0">
-              <button
-                onClick={onClose}
-                className="w-full px-4 py-2 text-sm font-medium bg-primary text-button-text rounded-lg hover:bg-primary-hover transition-colors"
-              >
-                Close
-              </button>
-            </div>
-          )}
+          {!currentLanguage &&
+            completedCount + failedCount === totalLanguages && (
+              <div className="pt-4 border-t border-border shrink-0">
+                <button
+                  onClick={onClose}
+                  className="w-full px-4 py-2 text-sm font-medium bg-primary text-button-text rounded-lg hover:bg-primary-hover transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            )}
         </div>
       </div>
     </div>

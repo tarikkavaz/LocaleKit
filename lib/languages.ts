@@ -110,7 +110,7 @@ export function saveCustomLanguages(languages: Language[]): void {
  */
 export function addCustomLanguage(code: string, name: string): void {
   const customLanguages = getCustomLanguages();
-  
+
   // Check if language code already exists
   if (customLanguages.some((lang) => lang.code === code)) {
     throw new Error(`Language with code "${code}" already exists`);
@@ -134,7 +134,11 @@ export function addCustomLanguage(code: string, name: string): void {
 /**
  * Update a custom language
  */
-export function updateCustomLanguage(oldCode: string, newCode: string, newName: string): void {
+export function updateCustomLanguage(
+  oldCode: string,
+  newCode: string,
+  newName: string
+): void {
   const customLanguages = getCustomLanguages();
   const index = customLanguages.findIndex((lang) => lang.code === oldCode);
 
@@ -144,7 +148,11 @@ export function updateCustomLanguage(oldCode: string, newCode: string, newName: 
 
   // If code changed, check for conflicts
   if (oldCode !== newCode.trim()) {
-    if (customLanguages.some((lang) => lang.code === newCode.trim() && lang.code !== oldCode)) {
+    if (
+      customLanguages.some(
+        (lang) => lang.code === newCode.trim() && lang.code !== oldCode
+      )
+    ) {
       throw new Error(`Language with code "${newCode}" already exists`);
     }
     if (DEFAULT_LANGUAGES.some((lang) => lang.code === newCode.trim())) {

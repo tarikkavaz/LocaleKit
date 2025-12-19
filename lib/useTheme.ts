@@ -10,7 +10,8 @@ export function useTheme() {
 
   useEffect(() => {
     // Load saved theme or default to dark
-    const savedTheme = (typeof window !== "undefined" && localStorage.getItem("theme")) as Theme | null;
+    const savedTheme = (typeof window !== "undefined" &&
+      localStorage.getItem("theme")) as Theme | null;
     const initialTheme = savedTheme || "dark";
     setTheme(initialTheme);
     applyTheme(initialTheme);
@@ -21,7 +22,9 @@ export function useTheme() {
     let resolved: "light" | "dark";
 
     if (themeToApply === "system") {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const prefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
       resolved = prefersDark ? "dark" : "light";
     } else {
       resolved = themeToApply;

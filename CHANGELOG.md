@@ -5,6 +5,7 @@ All notable changes to LocaleKit will be documented in this file.
 ## [1.0.0] - 2024-12-XX
 
 ### Added
+
 - Initial release of LocaleKit
 - JSON file selection and parsing
 - Visual JSON structure viewer with node exclusion

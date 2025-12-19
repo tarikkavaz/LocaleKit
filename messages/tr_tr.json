@@ -1,0 +1,139 @@
+{
+  "common": {
+    "cancel": "İptal",
+    "save": "Kaydet",
+    "close": "Kapat",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "loading": "Yükleniyor...",
+    "error": "Hata",
+    "success": "Başarılı",
+    "warning": "Uyarı",
+    "confirm": "Onayla",
+    "reload": "Yeniden Yükle",
+    "quit": "Çıkış",
+    "about": "Hakkında",
+    "settings": "Ayarlar",
+    "default": "Varsayılan"
+  },
+  "homePage": {
+    "selectFile": "JSON Dosyası Seç",
+    "selectDifferentFile": "Farklı Dosya Seç",
+    "translate": "Çevir",
+    "translating": "Çevriliyor...",
+    "selectModel": "Bir AI Modeli Seç",
+    "selectedFile": "Seçilen dosya:",
+    "errorSelectFile": "Lütfen bir dosya ve en az bir dil seçin",
+    "errorApiKey": "Lütfen Ayarlar bölümünden {provider} API anahtarınızı ekleyin",
+    "errorInvalidJson": "Geçersiz JSON dosyası. Lütfen geçerli bir JSON dosyası seçin.",
+    "errorFailedSelect": "Dosya seçilemedi"
+  },
+  "header": {
+    "title": "LocaleKit",
+    "subtitle": "AI destekli i18n çeviri aracı",
+    "tooltipReload": "Yeniden yükle ve önbelleği temizle",
+    "tooltipSettings": "Ayarlar",
+    "tooltipAboutQuit": "Hakkında / Çıkış"
+  },
+  "about": {
+    "title": "LocaleKit Hakkında",
+    "description": "LocaleKit, JSON dosyalarını gelişmiş AI modelleri kullanarak birden fazla dile çevirmenize yardımcı olan AI destekli bir i18n çeviri aracıdır.",
+    "author": "Tarık Kavaz"
+  },
+  "reloadConfirm": {
+    "title": "Yeniden Yükle ve Önbelleği Temizle",
+    "message": "Bu işlem mevcut dosyayı temizler ve uygulamayı yeniden başlatır. Devam edilsin mi?"
+  },
+  "quitConfirm": {
+    "title": "Uygulamadan Çık",
+    "message": "LocaleKit uygulamasından çıkmak istediğinize emin misiniz? Kaydedilmemiş değişiklikler kaybolacaktır."
+  },
+  "languageSelector": {
+    "title": "Dilleri Seç",
+    "selected": "{count} / {total} seçildi",
+    "searchPlaceholder": "Dil ara...",
+    "selectAll": "Tümünü Seç",
+    "deselectAll": "Tüm Seçimi Kaldır",
+    "noLanguagesFound": "Dil bulunamadı"
+  },
+  "translationProgress": {
+    "title": "Çeviri İlerlemesi",
+    "completed": "{count} / {total} tamamlandı",
+    "progress": "%{percent}",
+    "translating": "Çevriliyor: {language}",
+    "completedCount": "{count} {count, plural, =1 {dil} other {dil}} tamamlandı",
+    "failedCount": "{count} {count, plural, =1 {dil} other {dil}} başarısız",
+    "warningsCount": "{count} {count, plural, =1 {dil uyarı içeriyor} other {dil uyarı içeriyor}}",
+    "remaining": "{count} {count, plural, =1 {dil} other {dil}} kaldı",
+    "failedReselected": "Başarısız olan diller Dil Seçici içinde yeniden seçildi. Yukarıdaki hataları gözden geçirin ve mevcut seçimle tekrar deneyin.",
+    "completedWithWarnings": "Çeviri şu diller için uyarılarla tamamlandı: {languages}.",
+    "translationLogs": "Çeviri Kayıtları",
+    "copyLogs": "Kayıtları panoya kopyala",
+    "toggleLogs": "{action} için tıklayın",
+    "open": "aç",
+    "close": "kapat",
+    "noLogs": "Henüz kayıt yok..."
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "tabs": {
+      "appSettings": "Uygulama Ayarları",
+      "languages": "Tercüme Dilleri",
+      "apiKeys": "API Anahtarları",
+      "usage": "Kullanım"
+    },
+    "appSettings": {
+      "title": "Uygulama Ayarları",
+      "selectLanguage": "Dil Seç",
+      "languageDescription": "Uygulama arayüzü için tercih ettiğiniz dili seçin"
+    },
+    "languages": {
+      "addCustom": "Özel Dil Ekle",
+      "codePlaceholder": "Dil kodu (örn. en_us)",
+      "namePlaceholder": "Dil adı (örn. İngilizce ABD)",
+      "add": "Dil Ekle",
+      "allLanguages": "Tüm Diller",
+      "enterBoth": "Lütfen hem kodu hem adı girin",
+      "invalidCode": "Geçersiz dil kodu formatı. Format: xx_xx (örn. en_us)",
+      "deleteConfirm": "Dili sil",
+      "deleteMessage": "\"{code}\" dilini listeden kaldırmak istiyor musunuz?",
+      "failedAdd": "Dil eklenemedi",
+      "failedUpdate": "Dil güncellenemedi",
+      "failedDelete": "Dil silinemedi"
+    },
+    "apiKeys": {
+      "openai": "OpenAI API Anahtarı",
+      "anthropic": "Anthropic API Anahtarı",
+      "mistral": "Mistral API Anahtarı",
+      "openrouter": "OpenRouter API Anahtarı",
+      "getKeyOpenai": "API anahtarınızı OpenAI Platformundan alın",
+      "getKeyAnthropic": "API anahtarınızı Anthropic Console üzerinden alın",
+      "getKeyMistral": "API anahtarınızı Mistral Console üzerinden alın",
+      "getKeyOpenrouter": "Ücretsiz hesap + API anahtarı ücretsiz modellerin kilidini açar (kredi kartı gerekmez)",
+      "placeholder": "{label} girin",
+      "secureStorage": "API anahtarları işletim sistemi seviyesinde güvenli depolama kullanılarak saklanır ve cihazınızdan dışarı çıkmaz.",
+      "failedSave": "API anahtarları güvenli şekilde kaydedilemedi. Lütfen tekrar deneyin."
+    },
+    "usage": {
+      "title": "Kullanım İstatistikleri",
+      "description": "Yerel geçmişe dayanır; maliyetler model fiyatlandırmasına göre tahmini olarak hesaplanır.",
+      "lastDays": "Son {days} gün",
+      "totalRequests": "Toplam istek",
+      "successRate": "Başarı oranı",
+      "avgDuration": "Ortalama süre",
+      "estCost": "Tahmini maliyet",
+      "byProvider": "Sağlayıcıya göre",
+      "requests": "{count} istek",
+      "tokens": "Token",
+      "avgTime": "Ort. süre",
+      "cost": "Maliyet",
+      "estimatedNote": "Tahmini token sayıları karakter uzunluğundan türetilir; maliyetler mevcutsa model fiyatlandırması kullanılarak hesaplanır.",
+      "clearHistory": "Kullanım geçmişini temizle",
+      "clearConfirm": "Kullanım geçmişi temizlensin mi?"
+    }
+  },
+  "errors": {
+    "unknown": "Bilinmeyen hata",
+    "timeout": "Zaman aşımı algılandı. Dosya çok büyük olabilir veya API yavaş yanıt veriyor olabilir"
+  }
+}

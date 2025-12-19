@@ -2,13 +2,21 @@
 
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { FileJson, Languages, Play, ChevronDown, RotateCcw } from "lucide-react";
+import {
+  FileJson,
+  Languages,
+  Play,
+  ChevronDown,
+  RotateCcw,
+} from "lucide-react";
+import { useTranslations } from "next-intl";
 import { isTauri } from "@/lib/utils";
 import { getKey, migrateFromLocalStorage } from "@/lib/secure-keys";
 import { UnifiedTranslator, getProviderForModel } from "@/lib/llm";
 import { getAvailableModels, type ModelInfo } from "@/lib/models";
 import type { Provider } from "@/lib/types";
 import { getAllLanguages, getLanguageByCode } from "@/lib/languages";
+import { jsonToToon } from "@/lib/toon";
 import DraggableHeader from "@/components/DraggableHeader";
 import JSONStructureViewer from "@/components/JSONStructureViewer";
 import LanguageSelector from "@/components/LanguageSelector";
@@ -17,6 +25,8 @@ import { useTheme } from "@/lib/useTheme";
 import { useConsoleLogs } from "@/lib/useConsoleLogs";
 import SettingsModal from "@/components/SettingsModal";
 import { trackUsage, estimateTokens } from "@/lib/usage-tracker";
+import packageJson from "../package.json";
+import CustomSelect from "@/components/CustomSelect";
 
 interface TranslationResult {
   languageCode: string;
@@ -40,11 +50,7 @@ function alignToBaseStructure(base: any, translated: any): any {
   }
 
   // Objects: keep only base keys, recurse
-  if (
-    base &&
-    typeof base === "object" &&
-    !Array.isArray(base)
-  ) {
+  if (base && typeof base === "object" && !Array.isArray(base)) {
     const result: any = {};
     const baseKeys = Object.keys(base);
     for (const key of baseKeys) {
@@ -63,11 +69,14 @@ function alignToBaseStructure(base: any, translated: any): any {
 }
 
 export default function HomePage() {
+  const t = useTranslations();
   const [sourceFilePath, setSourceFilePath] = useState<string | null>(null);
   const [jsonContent, setJsonContent] = useState<any>(null);
   const [excludedPaths, setExcludedPaths] = useState<string[]>([]);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
-  const [sourceLanguageCode, setSourceLanguageCode] = useState<string | null>(null);
+  const [sourceLanguageCode, setSourceLanguageCode] = useState<string | null>(
+    null
+  );
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
@@ -88,11 +97,14 @@ export default function HomePage() {
     warnings: [] as Array<{ code: string; name: string; warning: string }>,
     progress: 0,
   });
-  const [translationResults, setTranslationResults] = useState<TranslationResult[]>([]);
+  const [translationResults, setTranslationResults] = useState<
+    TranslationResult[]
+  >([]);
   const { theme } = useTheme();
   const progressSectionRef = useRef<HTMLDivElement>(null);
   const [isReloadConfirmOpen, setIsReloadConfirmOpen] = useState(false);
-  
+  const [isQuitConfirmOpen, setIsQuitConfirmOpen] = useState(false);
+
   // Initialize console logging (logs persist across component mounts)
   useConsoleLogs();
 
@@ -169,6 +181,7 @@ export default function HomePage() {
         progress: 0,
       });
 
+      // Get file path (no timeout needed - dialog will return null if cancelled)
       const filePath = await invoke<string | null>("select_source_file");
 
       if (!filePath) {
@@ -183,7 +196,7 @@ export default function HomePage() {
       const fileName = filePath.split(/[/\\]/).pop() || "";
       const fileNameWithoutExt = fileName.replace(/\.json$/i, "");
       const allLanguages = getAllLanguages();
-      
+
       // Check if filename ends with a known language code pattern
       let detectedLangCode: string | null = null;
       for (const lang of allLanguages) {
@@ -197,28 +210,39 @@ export default function HomePage() {
           break;
         }
       }
-      
+
       setSourceLanguageCode(detectedLangCode);
-      
+
       // Remove source language from selected languages if it was selected
       if (detectedLangCode) {
-        setSelectedLanguages((prev) => prev.filter((code) => code !== detectedLangCode));
+        setSelectedLanguages((prev) =>
+          prev.filter((code) => code !== detectedLangCode)
+        );
       }
 
-      // Read the file
-      const content = await invoke<string>("read_json_file", { path: filePath });
+      // Read the file with timeout
+      const readPromise = invoke<string>("read_json_file", { path: filePath });
+      const readTimeoutPromise = new Promise<string>(
+        (_, reject) =>
+          setTimeout(() => reject(new Error("File read timeout")), 10000) // 10 second timeout
+      );
+
+      const content = await Promise.race([readPromise, readTimeoutPromise]);
 
       // Parse JSON
       try {
         const parsed = JSON.parse(content);
         setJsonContent(parsed);
       } catch (parseError) {
-        setError("Invalid JSON file. Please select a valid JSON file.");
+        setError(t("homePage.errorInvalidJson"));
         setJsonContent(null);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to select file");
+      console.error("Error selecting file:", err);
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setError(errorMessage || t("homePage.errorFailedSelect"));
       setJsonContent(null);
+      setSourceFilePath(null);
     } finally {
       setIsLoading(false);
     }
@@ -226,7 +250,7 @@ export default function HomePage() {
 
   const handleTranslate = async () => {
     if (!jsonContent || selectedLanguages.length === 0) {
-      setError("Please select a file and at least one language");
+      setError(t("homePage.errorSelectFile"));
       return;
     }
 
@@ -234,22 +258,26 @@ export default function HomePage() {
     const apiKey = apiKeys[provider];
 
     if (!apiKey || !apiKey.trim()) {
-      setError(`Please add your ${provider} API key in Settings`);
+      setError(t("homePage.errorApiKey", { provider }));
       setIsSettingsOpen(true);
       return;
     }
 
     console.log("=".repeat(60));
     console.log("[Translation] Starting translation process");
-    console.log(`[Translation] Selected languages: ${selectedLanguages.join(", ")}`);
-    console.log(`[Translation] Total languages to translate: ${selectedLanguages.length}`);
+    console.log(
+      `[Translation] Selected languages: ${selectedLanguages.join(", ")}`
+    );
+    console.log(
+      `[Translation] Total languages to translate: ${selectedLanguages.length}`
+    );
     console.log(`[Translation] Model: ${model}`);
     console.log(`[Translation] Provider: ${provider}`);
     console.log(`[Translation] Excluded paths: ${excludedPaths.length}`);
     if (excludedPaths.length > 0) {
       console.log(`[Translation] Excluded paths:`, excludedPaths);
     }
-    
+
     setIsTranslating(true);
     setError("");
     setTranslationResults([]);
@@ -264,15 +292,31 @@ export default function HomePage() {
     // Scroll to progress section after a short delay to ensure it's rendered
     setTimeout(() => {
       if (progressSectionRef.current) {
-        progressSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        progressSectionRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
       } else {
         // Fallback: scroll to bottom of page
-        window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: "smooth",
+        });
       }
     }, 100);
 
     const translator = new UnifiedTranslator(provider, apiKey, model);
     const results: TranslationResult[] = [];
+    const INPUT_TOKEN_OVERHEAD = 400;
+    const baseJsonString = JSON.stringify(jsonContent); // Minified for transport
+    const baseJsonFormatted = JSON.stringify(jsonContent, null, 2); // Pretty for logs/merge display
+    const baseToonString = jsonToToon(jsonContent);
+    const inputTokensEstimate =
+      estimateTokens(baseToonString) + INPUT_TOKEN_OVERHEAD;
+    const jsonSize = new Blob([baseJsonString]).size;
+    const formattedSize = new Blob([baseJsonFormatted]).size;
+    const jsonSizeKB = (jsonSize / 1024).toFixed(2);
+    const formattedSizeKB = (formattedSize / 1024).toFixed(2);
 
     // TEST MODE: Set to true to test warnings and errors
     // Specify language codes that should fail, have warnings, or pass
@@ -283,11 +327,13 @@ export default function HomePage() {
 
     // Resolve which languages to simulate based on the current selection
     const testFailLangCode = TEST_MODE
-      ? selectedLanguages.find((code) => code === TEST_FAIL_LANGUAGE) ?? selectedLanguages[0]
+      ? (selectedLanguages.find((code) => code === TEST_FAIL_LANGUAGE) ??
+        selectedLanguages[0])
       : null;
     const testWarningLangCode = TEST_MODE
-      ? selectedLanguages.find((code) => code === TEST_WARNING_LANGUAGE && code !== testFailLangCode) ??
-        selectedLanguages.find((code) => code !== testFailLangCode)
+      ? (selectedLanguages.find(
+          (code) => code === TEST_WARNING_LANGUAGE && code !== testFailLangCode
+        ) ?? selectedLanguages.find((code) => code !== testFailLangCode))
       : null;
 
     // Sequential translation - one language at a time
@@ -303,7 +349,11 @@ export default function HomePage() {
           .filter((r) => !r.success)
           .map((r) => {
             const failedLang = getLanguageByCode(r.languageCode);
-            return { code: r.languageCode, name: failedLang?.name || r.languageCode, error: r.error || "Unknown error" };
+            return {
+              code: r.languageCode,
+              name: failedLang?.name || r.languageCode,
+              error: r.error || "Unknown error",
+            };
           }),
         warnings: results
           .filter((r) => r.success && r.warnings?.length)
@@ -334,12 +384,18 @@ export default function HomePage() {
 
           setTranslationProgress({
             currentLanguage: language?.name || langCode,
-            completed: results.filter((r) => r.success).map((r) => r.languageCode),
+            completed: results
+              .filter((r) => r.success)
+              .map((r) => r.languageCode),
             failed: results
               .filter((r) => !r.success)
               .map((r) => {
                 const failedLang = getLanguageByCode(r.languageCode);
-                return { code: r.languageCode, name: failedLang?.name || r.languageCode, error: r.error || "Unknown error" };
+                return {
+                  code: r.languageCode,
+                  name: failedLang?.name || r.languageCode,
+                  error: r.error || "Unknown error",
+                };
               }),
             warnings: results
               .filter((r) => r.success && r.warnings?.length)
@@ -362,17 +418,25 @@ export default function HomePage() {
           languageCode: langCode,
           translatedJson: simulatedJson,
           success: true,
-          warnings: simulatedWarning ? ["Test warning: Simulated merge failure for testing"] : undefined,
+          warnings: simulatedWarning
+            ? ["Test warning: Simulated merge failure for testing"]
+            : undefined,
         });
 
         setTranslationProgress({
           currentLanguage: language?.name || langCode,
-          completed: results.filter((r) => r.success).map((r) => r.languageCode),
+          completed: results
+            .filter((r) => r.success)
+            .map((r) => r.languageCode),
           failed: results
             .filter((r) => !r.success)
             .map((r) => {
               const failedLang = getLanguageByCode(r.languageCode);
-              return { code: r.languageCode, name: failedLang?.name || r.languageCode, error: r.error || "Unknown error" };
+              return {
+                code: r.languageCode,
+                name: failedLang?.name || r.languageCode,
+                error: r.error || "Unknown error",
+              };
             }),
           warnings: results
             .filter((r) => r.success && r.warnings?.length)
@@ -391,30 +455,32 @@ export default function HomePage() {
       }
 
       try {
-        console.log(`[Translation] Starting translation for language: ${langCode} (${language?.name || langCode})`);
+        console.log(
+          `[Translation] Starting translation for language: ${langCode} (${language?.name || langCode})`
+        );
         console.log(`[Translation] Model: ${model}, Provider: ${provider}`);
-        console.log(`[Translation] Excluded paths: ${excludedPaths.length} paths excluded`);
-        
-        // Convert JSON to string for API call
-        // The translator will convert it to TOON format internally for maximum size reduction
-        const jsonString = JSON.stringify(jsonContent); // Minified JSON
-        const jsonStringFormatted = JSON.stringify(jsonContent, null, 2); // Formatted for display
-        
-        const jsonSize = new Blob([jsonString]).size;
-        const formattedSize = new Blob([jsonStringFormatted]).size;
-        const jsonSizeKB = (jsonSize / 1024).toFixed(2);
-        const formattedSizeKB = (formattedSize / 1024).toFixed(2);
-        
-        console.log(`[Translation] JSON size (formatted): ${formattedSizeKB} KB`);
+        console.log(
+          `[Translation] Excluded paths: ${excludedPaths.length} paths excluded`
+        );
+
+        console.log(
+          `[Translation] JSON size (formatted): ${formattedSizeKB} KB`
+        );
         console.log(`[Translation] JSON size (minified): ${jsonSizeKB} KB`);
-        console.log(`[Translation] JSON character count: ${jsonString.length.toLocaleString()}`);
-        console.log(`[Translation] Using TOON format for API call (will be converted internally)`);
-        
-        console.log(`[Translation] Sending request to AI API at ${new Date().toISOString()}`);
-        
+        console.log(
+          `[Translation] JSON character count: ${baseJsonString.length.toLocaleString()}`
+        );
+        console.log(
+          `[Translation] Using TOON format for API call (converted internally)`
+        );
+
+        console.log(
+          `[Translation] Sending request to AI API at ${new Date().toISOString()}`
+        );
+
         // Send JSON - translator will convert to TOON internally
         const result = await translator.translate({
-          jsonContent: jsonString,
+          jsonContent: baseJsonString,
           targetLanguage: language?.name || langCode,
           excludedPaths,
           model,
@@ -428,24 +494,36 @@ export default function HomePage() {
           const mergedObj = alignToBaseStructure(jsonContent, translatedObj);
           mergedJsonString = JSON.stringify(mergedObj, null, 2);
         } catch (mergeErr) {
-          console.error("[Translation] Failed to merge translated JSON, using raw result:", mergeErr);
+          console.error(
+            "[Translation] Failed to merge translated JSON, using raw result:",
+            mergeErr
+          );
           hasWarning = true;
         }
-        
+
         const duration = Date.now() - startTime;
         const durationSeconds = (duration / 1000).toFixed(2);
-        console.log(`[Translation] Translation completed in ${durationSeconds}s`);
-        
+        console.log(
+          `[Translation] Translation completed in ${durationSeconds}s`
+        );
+
         const translatedSize = new Blob([mergedJsonString]).size;
         const translatedSizeKB = (translatedSize / 1024).toFixed(2);
-        console.log(`[Translation] Translated JSON size: ${translatedSizeKB} KB`);
+        console.log(
+          `[Translation] Translated JSON size: ${translatedSizeKB} KB`
+        );
 
-        // Track usage (approximate tokens from translated JSON)
+        // Track usage (approximate tokens for input + output)
+        const outputTokens = estimateTokens(mergedJsonString);
+        const totalTokens = inputTokensEstimate + outputTokens;
         trackUsage({
           timestamp: Date.now(),
           provider,
           model,
-          tokens: estimateTokens(mergedJsonString),
+          tokens: totalTokens,
+          inputTokens: inputTokensEstimate,
+          outputTokens,
+          totalTokens,
           duration,
           success: true,
         });
@@ -454,7 +532,9 @@ export default function HomePage() {
           languageCode: langCode,
           translatedJson: mergedJsonString,
           success: true,
-          warnings: hasWarning ? ["Merge failed - using raw translation result"] : undefined,
+          warnings: hasWarning
+            ? ["Merge failed - using raw translation result"]
+            : undefined,
         });
 
         // Automatically save the file immediately after successful translation
@@ -462,19 +542,22 @@ export default function HomePage() {
           try {
             // Get directory and extension from source file
             const lastSlash = sourceFilePath.lastIndexOf("/");
-            const directory = lastSlash >= 0 ? sourceFilePath.substring(0, lastSlash + 1) : "";
-            const extension = sourceFilePath.substring(sourceFilePath.lastIndexOf("."));
+            const directory =
+              lastSlash >= 0 ? sourceFilePath.substring(0, lastSlash + 1) : "";
+            const extension = sourceFilePath.substring(
+              sourceFilePath.lastIndexOf(".")
+            );
             const targetPath = `${directory}${langCode}${extension}`;
 
-                    // Never overwrite the source file
-                    if (targetPath !== sourceFilePath) {
-                      console.log(`Auto-saving: ${targetPath}`);
-                      await invoke("write_json_file", {
-                        path: targetPath,
+            // Never overwrite the source file
+            if (targetPath !== sourceFilePath) {
+              console.log(`Auto-saving: ${targetPath}`);
+              await invoke("write_json_file", {
+                path: targetPath,
                 content: mergedJsonString,
-                      });
-                      // Use console.info with a success prefix for green color in logs
-                      console.info(`[SUCCESS] Successfully saved: ${targetPath}`);
+              });
+              // Use console.info with a success prefix for green color in logs
+              console.info(`[SUCCESS] Successfully saved: ${targetPath}`);
             }
           } catch (saveErr) {
             console.error(`Failed to auto-save ${langCode}:`, saveErr);
@@ -485,12 +568,18 @@ export default function HomePage() {
         // Update progress after completing this language
         setTranslationProgress({
           currentLanguage: language?.name || langCode,
-          completed: results.filter((r) => r.success).map((r) => r.languageCode),
+          completed: results
+            .filter((r) => r.success)
+            .map((r) => r.languageCode),
           failed: results
             .filter((r) => !r.success)
             .map((r) => {
               const failedLang = getLanguageByCode(r.languageCode);
-              return { code: r.languageCode, name: failedLang?.name || r.languageCode, error: r.error || "Unknown error" };
+              return {
+                code: r.languageCode,
+                name: failedLang?.name || r.languageCode,
+                error: r.error || "Unknown error",
+              };
             }),
           warnings: results
             .filter((r) => r.success && r.warnings?.length)
@@ -505,32 +594,38 @@ export default function HomePage() {
           progress: ((i + 1) / selectedLanguages.length) * 100,
         });
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : "Translation failed";
-        const isTimeout = errorMessage.includes("timeout") || errorMessage.includes("timed out") || errorMessage.includes("Load failed");
+        const errorMessage =
+          err instanceof Error ? err.message : "Translation failed";
+        const isTimeout =
+          errorMessage.includes("timeout") ||
+          errorMessage.includes("timed out") ||
+          errorMessage.includes("Load failed");
         const quotaLikely =
           provider === "openai" &&
           /quota|billing|usage limit|budget/i.test(errorMessage);
-        
+
         console.error(`[Translation] Failed for ${langCode}:`, errorMessage);
         console.error(`[Translation] Error details:`, err);
         if (isTimeout) {
-          console.warn(`[Translation] Timeout detected - file may be too large or API is slow`);
+          console.warn(
+            `[Translation] Timeout detected - file may be too large or API is slow`
+          );
         }
         if (quotaLikely) {
           console.warn(
             `[Translation] Possible OpenAI quota/budget limit reached. Check your usage/billing dashboard.`
           );
         }
-        
+
         results.push({
           languageCode: langCode,
           translatedJson: "",
           success: false,
-          error: isTimeout 
+          error: isTimeout
             ? `Translation timed out. The file may be too large. Try excluding more paths or using a faster model.`
             : quotaLikely
-            ? `OpenAI may have hit a quota/budget limit. Check billing/usage.`
-            : errorMessage,
+              ? `OpenAI may have hit a quota/budget limit. Check billing/usage.`
+              : errorMessage,
         });
 
         // Track failed attempt
@@ -538,7 +633,10 @@ export default function HomePage() {
           timestamp: Date.now(),
           provider,
           model,
-          tokens: 0,
+          tokens: inputTokensEstimate,
+          inputTokens: inputTokensEstimate,
+          outputTokens: 0,
+          totalTokens: inputTokensEstimate,
           duration: Date.now() - startTime,
           success: false,
           error: errorMessage,
@@ -547,23 +645,29 @@ export default function HomePage() {
         // Update progress even on failure
         setTranslationProgress({
           currentLanguage: language?.name || langCode,
-          completed: results.filter((r) => r.success).map((r) => r.languageCode),
+          completed: results
+            .filter((r) => r.success)
+            .map((r) => r.languageCode),
           failed: results
             .filter((r) => !r.success)
             .map((r) => {
               const failedLang = getLanguageByCode(r.languageCode);
-              return { code: r.languageCode, name: failedLang?.name || r.languageCode, error: r.error || "Unknown error" };
+              return {
+                code: r.languageCode,
+                name: failedLang?.name || r.languageCode,
+                error: r.error || "Unknown error",
+              };
             }),
-        warnings: results
-          .filter((r) => r.success && r.warnings?.length)
-          .map((r) => {
-            const warnLang = getLanguageByCode(r.languageCode);
-            return {
-              code: r.languageCode,
-              name: warnLang?.name || r.languageCode,
-              warning: r.warnings?.[0] || "Warning",
-            };
-          }),
+          warnings: results
+            .filter((r) => r.success && r.warnings?.length)
+            .map((r) => {
+              const warnLang = getLanguageByCode(r.languageCode);
+              return {
+                code: r.languageCode,
+                name: warnLang?.name || r.languageCode,
+                warning: r.warnings?.[0] || "Warning",
+              };
+            }),
           progress: ((i + 1) / selectedLanguages.length) * 100,
         });
       }
@@ -571,14 +675,20 @@ export default function HomePage() {
 
     setTranslationResults(results);
     const failedLanguages = results.filter((r) => !r.success);
-    const warningLanguages = results.filter((r) => r.success && r.warnings?.length);
-    
+    const warningLanguages = results.filter(
+      (r) => r.success && r.warnings?.length
+    );
+
     setTranslationProgress({
       currentLanguage: null,
       completed: results.filter((r) => r.success).map((r) => r.languageCode),
       failed: failedLanguages.map((r) => {
         const failedLang = getLanguageByCode(r.languageCode);
-        return { code: r.languageCode, name: failedLang?.name || r.languageCode, error: r.error || "Unknown error" };
+        return {
+          code: r.languageCode,
+          name: failedLang?.name || r.languageCode,
+          error: r.error || "Unknown error",
+        };
       }),
       warnings: warningLanguages.map((r) => {
         const warnLang = getLanguageByCode(r.languageCode);
@@ -598,7 +708,9 @@ export default function HomePage() {
         const lang = getLanguageByCode(r.languageCode);
         return lang?.name || r.languageCode;
       });
-      console.info(`[Translation] Translation completed with these languages with warnings: ${warningNames.join(", ")}.`);
+      console.info(
+        `[Translation] Translation completed with these languages with warnings: ${warningNames.join(", ")}.`
+      );
     }
 
     if (failedLanguages.length > 0) {
@@ -616,17 +728,80 @@ export default function HomePage() {
     }
   };
 
+  const handleQuit = () => {
+    setIsQuitConfirmOpen(true);
+  };
 
-  const handleQuit = async () => {
+  const handleQuitConfirm = async () => {
+    setIsQuitConfirmOpen(false);
     if (isTauri()) {
       try {
+        // Exit the process directly - this works for all quit methods
         const { exit } = await import("@tauri-apps/plugin-process");
         await exit(0);
       } catch (err) {
         console.error("Failed to quit app:", err);
+        // Fallback: try to close the window
+        try {
+          await invoke("close_window");
+        } catch (closeErr) {
+          console.error("Failed to close window:", closeErr);
+        }
       }
     }
   };
+
+  // Handle keyboard shortcut for quit (Cmd+Q on Mac, Ctrl+Q on Windows/Linux)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+      const isQuitShortcut = isMac
+        ? event.metaKey && event.key === "q"
+        : event.ctrlKey && event.key === "q";
+
+      if (isQuitShortcut && isTauri()) {
+        event.preventDefault();
+        setIsQuitConfirmOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  // Listen for window close events from Tauri (red traffic light, menubar close)
+  useEffect(() => {
+    if (!isTauri()) return;
+
+    let unlistenCloseFn: (() => void) | null = null;
+    let unlistenAboutFn: (() => void) | null = null;
+
+    const setupEventListeners = async () => {
+      const { listen } = await import("@tauri-apps/api/event");
+      const unlistenClose = await listen("window-close-requested", () => {
+        setIsQuitConfirmOpen(true);
+      });
+      unlistenCloseFn = unlistenClose;
+
+      const unlistenAbout = await listen("open-about", () => {
+        setIsAboutOpen(true);
+      });
+      unlistenAboutFn = unlistenAbout;
+    };
+
+    setupEventListeners();
+
+    return () => {
+      if (unlistenCloseFn) {
+        unlistenCloseFn();
+      }
+      if (unlistenAboutFn) {
+        unlistenAboutFn();
+      }
+    };
+  }, []);
 
   const handleAbout = () => {
     setIsAboutOpen(true);
@@ -641,13 +816,13 @@ export default function HomePage() {
   };
 
   return (
-            <>
-              <DraggableHeader
-                onSettingsClick={() => setIsSettingsOpen(true)}
-                onAboutClick={handleAbout}
-                onQuitClick={handleQuit}
-                onReloadClick={() => setIsReloadConfirmOpen(true)}
-              />
+    <>
+      <DraggableHeader
+        onSettingsClick={() => setIsSettingsOpen(true)}
+        onAboutClick={handleAbout}
+        onQuitClick={handleQuit}
+        onReloadClick={() => setIsReloadConfirmOpen(true)}
+      />
 
       <SettingsModal
         isOpen={isSettingsOpen}
@@ -678,12 +853,16 @@ export default function HomePage() {
             className="relative w-full max-w-md mx-4 bg-card-bg rounded-lg shadow-xl p-6"
             style={{ backgroundColor: "var(--card-bg-solid)" }}
           >
-            <h2 className="text-xl font-semibold text-foreground mb-4">About LocaleKit <span className="text-xs text-foreground/60 ml-4">v 1.0.0</span></h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">
+              {t("about.title")}{" "}
+              <span className="text-xs text-foreground/60 ml-4">
+                v{packageJson.version}
+              </span>
+            </h2>
             <p className="text-sm text-foreground/80 mb-4">
-              LocaleKit is an AI-powered i18n translator that helps you translate JSON files into
-              multiple languages using advanced AI models.
+              {t("about.description")}
             </p>
-            
+
             <p className="text-xs text-foreground/60 mb-4">
               <a
                 href="https://tarik.kavaz.org"
@@ -691,14 +870,14 @@ export default function HomePage() {
                 rel="noopener noreferrer"
                 className="text-foreground/70 hover:text-foreground hover:underline"
               >
-                Tarik Kavaz
+                {t("about.author")}
               </a>
             </p>
             <button
               onClick={() => setIsAboutOpen(false)}
               className="w-full px-4 py-2 text-sm font-medium bg-primary text-button-text rounded-lg hover:bg-primary-hover transition-colors"
             >
-              Close
+              {t("common.close")}
             </button>
           </div>
         </div>
@@ -713,22 +892,57 @@ export default function HomePage() {
             className="relative w-full max-w-md mx-4 bg-card-bg rounded-lg shadow-xl p-6"
             style={{ backgroundColor: "var(--card-bg-solid)" }}
           >
-            <h2 className="text-xl font-semibold text-foreground mb-4">Reload and Clear Cache</h2>
+            <h2 className="text-xl font-semibold text-foreground mb-4">
+              {t("reloadConfirm.title")}
+            </h2>
             <p className="text-sm text-foreground/80 mb-4">
-              This will clear the current file and restart the app. Continue?
+              {t("reloadConfirm.message")}
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setIsReloadConfirmOpen(false)}
                 className="flex-1 px-4 py-2 text-sm font-medium bg-foreground/10 text-foreground rounded-lg hover:bg-foreground/20 transition-colors"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleReloadConfirm}
                 className="flex-1 px-4 py-2 text-sm font-medium bg-primary text-button-text rounded-lg hover:bg-primary-hover transition-colors"
               >
-                Reload
+                {t("common.reload")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isQuitConfirmOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm"
+          style={{ backgroundColor: "var(--color-modal-backdrop)" }}
+        >
+          <div
+            className="relative w-full max-w-md mx-4 bg-card-bg rounded-lg shadow-xl p-6"
+            style={{ backgroundColor: "var(--card-bg-solid)" }}
+          >
+            <h2 className="text-xl font-semibold text-foreground mb-4">
+              {t("quitConfirm.title")}
+            </h2>
+            <p className="text-sm text-foreground/80 mb-4">
+              {t("quitConfirm.message")}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsQuitConfirmOpen(false)}
+                className="flex-1 px-4 py-2 text-sm font-medium bg-foreground/10 text-foreground rounded-lg hover:bg-foreground/20 transition-colors"
+              >
+                {t("common.cancel")}
+              </button>
+              <button
+                onClick={handleQuitConfirm}
+                className="flex-1 px-4 py-2 text-sm font-medium bg-error-text text-black rounded-lg hover:brightness-110 transition-colors"
+              >
+                {t("common.quit")}
               </button>
             </div>
           </div>
@@ -747,17 +961,21 @@ export default function HomePage() {
               >
                 <FileJson className="w-5 h-5" />
                 {isLoading
-                  ? "Loading..."
+                  ? t("common.loading")
                   : sourceFilePath
-                  ? "Select Different File"
-                  : "Select JSON File"}
+                    ? t("homePage.selectDifferentFile")
+                    : t("homePage.selectFile")}
               </button>
             </div>
 
             {sourceFilePath && (
               <div className="p-4 bg-card border border-border rounded-lg">
-                <p className="text-sm text-foreground/60 mb-1">Selected file:</p>
-                <p className="text-sm font-mono text-foreground break-all">{sourceFilePath}</p>
+                <p className="text-sm text-foreground/60 mb-1">
+                  {t("homePage.selectedFile")}
+                </p>
+                <p className="text-sm font-mono text-foreground break-all">
+                  {sourceFilePath}
+                </p>
               </div>
             )}
 
@@ -771,37 +989,20 @@ export default function HomePage() {
           {/* Model Selection */}
           {availableModels.length > 0 && (
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-foreground">AI Model</label>
-              <div className="relative">
-                <select
-                  value={model}
-                  onChange={(e) => {
-                    setModel(e.target.value);
-                    localStorage.setItem("selected-model", e.target.value);
-                  }}
-                  className="w-full px-4 py-2.5 bg-background/40 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-foreground text-sm appearance-none cursor-pointer hover:bg-background/60 transition-colors pr-10"
-                  style={{ 
-                    backgroundColor: "var(--color-background)",
-                    backdropFilter: "blur(8px)"
-                  }}
-                >
-                  {availableModels.map((m) => (
-                    <option 
-                      key={m.id} 
-                      value={m.id}
-                      style={{ 
-                        backgroundColor: "var(--card-bg-solid)",
-                        color: "var(--color-foreground)"
-                      }}
-                    >
-                      {m.name} {m.description ? `- ${m.description}` : ""}
-                    </option>
-                  ))}
-                </select>
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                  <ChevronDown className="w-4 h-4 text-foreground/60" />
-                </div>
-              </div>
+              <label className="block text-sm font-medium text-foreground">
+                {t("homePage.selectModel")}
+              </label>
+              <CustomSelect
+                value={model}
+                onChange={(value) => {
+                  setModel(value);
+                  localStorage.setItem("selected-model", value);
+                }}
+                options={availableModels.map((m) => ({
+                  value: m.id,
+                  label: `${m.name}${m.description ? ` - ${m.description}` : ""}`,
+                }))}
+              />
             </div>
           )}
 
@@ -824,7 +1025,10 @@ export default function HomePage() {
                 if (languages.length > 0 && progressSectionRef.current) {
                   setTimeout(() => {
                     if (progressSectionRef.current) {
-                      progressSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+                      progressSectionRef.current.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
                     }
                   }, 100);
                 }
@@ -842,7 +1046,9 @@ export default function HomePage() {
                 className="w-full px-6 py-3 bg-primary text-button-text font-medium rounded-lg hover:bg-primary-hover focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 <Play className="w-5 h-5" />
-                {isTranslating ? "Translating..." : "Translate"}
+                {isTranslating
+                  ? t("homePage.translating")
+                  : t("homePage.translate")}
               </button>
             </div>
           )}

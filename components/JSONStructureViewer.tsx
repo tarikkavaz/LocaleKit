@@ -23,6 +23,7 @@ export default function JSONStructureViewer({
   onExcludedPathsChange,
 }: JSONStructureViewerProps) {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(true);
 
   // Convert JSON to tree structure
   const buildNodeTree = (obj: any, path: string = ""): JSONNode[] => {
@@ -51,10 +52,10 @@ export default function JSONStructureViewer({
           value === null
             ? "null"
             : Array.isArray(value)
-            ? "array"
-            : typeof value === "object"
-            ? "object"
-            : (typeof value as "string" | "number" | "boolean");
+              ? "array"
+              : typeof value === "object"
+                ? "object"
+                : (typeof value as "string" | "number" | "boolean");
 
         if (valueType === "object" || valueType === "array") {
           children.push({
@@ -74,7 +75,9 @@ export default function JSONStructureViewer({
       return children;
     }
 
-    return [{ path, value: obj, type: typeof obj as "string" | "number" | "boolean" }];
+    return [
+      { path, value: obj, type: typeof obj as "string" | "number" | "boolean" },
+    ];
   };
 
   const nodes = buildNodeTree(jsonData);
@@ -193,51 +196,71 @@ export default function JSONStructureViewer({
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-foreground">JSON Structure</h3>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => {
-              // Select all leaf nodes
-              const allPaths: string[] = [];
-              const collectPaths = (nodes: JSONNode[]) => {
-                nodes.forEach((node) => {
-                  if (!node.children || node.children.length === 0) {
-                    allPaths.push(node.path);
-                  } else if (node.children) {
-                    collectPaths(node.children);
-                  }
-                });
-              };
-              collectPaths(nodes);
-              onExcludedPathsChange(allPaths);
-            }}
-            className="text-xs text-foreground/60 hover:text-foreground transition-colors"
-          >
-            Exclude All
-          </button>
-          <button
-            onClick={() => onExcludedPathsChange([])}
-            className="text-xs text-foreground/60 hover:text-foreground transition-colors"
-          >
-            Include All
-          </button>
-        </div>
+      <div className="mb-4">
+        <h3 className="text-sm font-medium text-foreground mb-2">
+          JSON Structure
+        </h3>
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="w-full px-4 py-1.5 text-xs text-foreground/70 hover:text-foreground bg-primary/80 hover:bg-primary rounded transition-colors flex items-center justify-center gap-2"
+        >
+          {isCollapsed ? (
+            <ChevronRight className="w-4 h-4" />
+          ) : (
+            <ChevronDown className="w-4 h-4" />
+          )}
+          <span>Click to {isCollapsed ? "open" : "close"}</span>
+        </button>
       </div>
 
-      <div className="bg-card border border-border rounded-lg p-4 max-h-96 overflow-y-auto">
-        {nodes.length === 0 ? (
-          <p className="text-sm text-foreground/60 text-center py-4">No JSON data</p>
-        ) : (
-          <div className="space-y-1">
-            {nodes.map((node) => renderNode(node))}
+      {!isCollapsed && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-4 justify-end">
+            <button
+              onClick={() => {
+                // Select all leaf nodes
+                const allPaths: string[] = [];
+                const collectPaths = (nodes: JSONNode[]) => {
+                  nodes.forEach((node) => {
+                    if (!node.children || node.children.length === 0) {
+                      allPaths.push(node.path);
+                    } else if (node.children) {
+                      collectPaths(node.children);
+                    }
+                  });
+                };
+                collectPaths(nodes);
+                onExcludedPathsChange(allPaths);
+              }}
+              className="text-xs text-foreground/60 hover:text-foreground transition-colors"
+            >
+              Exclude All
+            </button>
+            <button
+              onClick={() => onExcludedPathsChange([])}
+              className="text-xs text-foreground/60 hover:text-foreground transition-colors"
+            >
+              Include All
+            </button>
           </div>
-        )}
-      </div>
+          <div className="bg-card border border-border rounded-lg p-4 max-h-96 overflow-y-auto">
+            {nodes.length === 0 ? (
+              <p className="text-sm text-foreground/60 text-center py-4">
+                No JSON data
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {nodes.map((node) => renderNode(node))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {excludedPaths.length > 0 && (
         <div className="text-xs text-foreground/60">
-          {excludedPaths.length} node{excludedPaths.length !== 1 ? "s" : ""} excluded from translation
+          {excludedPaths.length} node{excludedPaths.length !== 1 ? "s" : ""}{" "}
+          excluded from translation
         </div>
       )}
     </div>

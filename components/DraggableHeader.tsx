@@ -4,6 +4,8 @@ import { Settings, Info, X, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "@/lib/useTheme";
 import { isTauri } from "@/lib/utils";
+import { useTranslations } from "next-intl";
+import Tooltip from "./Tooltip";
 
 interface DraggableHeaderProps {
   onSettingsClick: () => void;
@@ -18,6 +20,7 @@ export default function DraggableHeader({
   onQuitClick,
   onReloadClick,
 }: DraggableHeaderProps) {
+  const t = useTranslations();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { resolvedTheme, toggleTheme } = useTheme();
@@ -26,31 +29,6 @@ export default function DraggableHeader({
   useEffect(() => {
     setIsTauriApp(isTauri());
   }, []);
-
-  const Tooltip = ({ label, children }: { label: string; children: React.ReactNode }) => {
-    const [visible, setVisible] = useState(false);
-    return (
-      <div
-        className="relative"
-        onMouseEnter={() => setVisible(true)}
-        onMouseLeave={() => setVisible(false)}
-        onFocus={() => setVisible(true)}
-        onBlur={() => setVisible(false)}
-      >
-        {children}
-        {visible && (
-          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-10000">
-            <div className="relative">
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-white" />
-              <div className="bg-white text-black text-xs px-2 py-1 rounded shadow-md whitespace-nowrap">
-                {label}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -76,41 +54,47 @@ export default function DraggableHeader({
         className="flex items-center gap-3 absolute left-1/2 transform -translate-x-1/2 select-none cursor-default"
       >
         <div data-tauri-drag-region>
-          <h1 data-tauri-drag-region className="text-xl font-bold text-foreground">
-            LocaleKit
+          <h1
+            data-tauri-drag-region
+            className="text-xl font-bold text-foreground"
+          >
+            {t("header.title")}
           </h1>
           <p data-tauri-drag-region className="text-xs text-foreground/60">
-            AI-powered i18n translator
+            {t("header.subtitle")}
           </p>
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <Tooltip label="Reload and clear cache">
+        <Tooltip label={t("header.tooltipReload")}>
           <button
             data-tauri-drag-region="false"
             type="button"
             onClick={onReloadClick}
             className="p-2 hover:bg-foreground/5 rounded-lg transition-colors cursor-pointer"
-            aria-label="Reload"
+            aria-label={t("common.reload")}
           >
             <RefreshCw className="w-5 h-5 text-foreground hover:text-foreground/90 transition-colors" />
           </button>
         </Tooltip>
-        <Tooltip label="Settings">
+        <Tooltip label={t("header.tooltipSettings")}>
           <button
             data-tauri-drag-region="false"
             type="button"
             onClick={onSettingsClick}
             className="p-2 hover:bg-foreground/5 rounded-lg transition-colors cursor-pointer"
-            aria-label="Settings"
+            aria-label={t("common.settings")}
           >
             <Settings className="w-5 h-5 text-foreground hover:text-foreground/90 transition-colors" />
           </button>
         </Tooltip>
 
         {isTauriApp && (
-          <div className="relative flex flex-col items-center group pr-6" ref={menuRef}>
-            <Tooltip label="About / Quit">
+          <div
+            className="relative flex flex-col items-center group pr-6"
+            ref={menuRef}
+          >
+            <Tooltip label={t("header.tooltipAboutQuit")}>
               <button
                 data-tauri-drag-region="false"
                 type="button"
@@ -136,7 +120,7 @@ export default function DraggableHeader({
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-foreground/5 transition-colors first:rounded-t-lg"
                 >
                   <Info className="w-4 h-4" />
-                  <span>About</span>
+                  <span>{t("common.about")}</span>
                 </button>
 
                 <div className="border-t border-border" />
@@ -150,7 +134,7 @@ export default function DraggableHeader({
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm text-error-text hover:bg-error-bg transition-colors last:rounded-b-lg"
                 >
                   <X className="w-4 h-4" />
-                  <span>Quit</span>
+                  <span>{t("common.quit")}</span>
                 </button>
               </div>
             )}

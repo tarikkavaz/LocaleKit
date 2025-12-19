@@ -96,7 +96,10 @@ export async function migrateFromLocalStorage(): Promise<void> {
   const MIGRATION_FLAG = "LOCALEKIT_MIGRATION_COMPLETE_V1_0_0";
 
   // Check if migration has already been completed
-  if (typeof window === "undefined" || localStorage.getItem(MIGRATION_FLAG) === "true") {
+  if (
+    typeof window === "undefined" ||
+    localStorage.getItem(MIGRATION_FLAG) === "true"
+  ) {
     return;
   }
 

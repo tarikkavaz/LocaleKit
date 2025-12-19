@@ -253,7 +253,9 @@ export function getDefaultModel(): ModelInfo {
 /**
  * Get available models based on which API keys are configured
  */
-export function getAvailableModels(hasKeys: Record<Provider, boolean>): ModelInfo[] {
+export function getAvailableModels(
+  hasKeys: Record<Provider, boolean>
+): ModelInfo[] {
   return MODELS.filter((model) => {
     // All models require their provider's API key
     return hasKeys[model.provider] === true;

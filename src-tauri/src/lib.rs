@@ -1,4 +1,4 @@
-use tauri::Manager;
+use tauri::{Manager, Emitter};
 use std::fs;
 use std::path::PathBuf;
 use base64::{Engine as _, engine::general_purpose};
@@ -116,6 +116,12 @@ fn check_file_exists(path: String) -> Result<bool, String> {
     Ok(fs::metadata(&path).is_ok())
 }
 
+#[tauri::command]
+fn close_window(window: tauri::Window) -> Result<(), String> {
+    window.close()
+        .map_err(|e| format!("Failed to close window: {}", e))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -130,7 +136,8 @@ pub fn run() {
             select_source_file,
             read_json_file,
             write_json_file,
-            check_file_exists
+            check_file_exists,
+            close_window
         ])
         .setup(|app| {
             // Ensure app appears in Dock (not menu bar)
@@ -139,12 +146,64 @@ pub fn run() {
                 app.set_activation_policy(tauri::ActivationPolicy::Regular);
             }
 
+            // Intercept quit action from OS menu
+            let app_handle = app.handle().clone();
+            #[cfg(target_os = "macos")]
+            {
+                use tauri::menu::{Menu, MenuItem, Submenu};
+                // Create About and Quit menu items
+                let about_item = MenuItem::with_id(app, "about", "About LocaleKit", true, None::<&str>)?;
+                let quit_item = MenuItem::with_id(app, "quit", "Quit LocaleKit", true, Some("q"))?;
+                // Create the app submenu with About and Quit items
+                let app_submenu = Submenu::with_items(app, "LocaleKit", true, &[&about_item, &quit_item])?;
+                // Create the main menu with the app submenu
+                let menu = Menu::with_items(app, &[&app_submenu])?;
+                // Set as the app menu
+                app.set_menu(menu)?;
+                
+                // Handle menu events - intercept quit and about actions
+                app.on_menu_event(move |_app, event| {
+                    let event_id = event.id.as_ref();
+                    println!("Menu event received: {}", event_id);
+                    if event_id == "quit" {
+                        println!("Intercepting quit action, showing confirmation");
+                        // Emit event to frontend to show confirmation
+                        let _ = app_handle.emit("window-close-requested", ());
+                    } else if event_id == "about" {
+                        println!("Opening about modal");
+                        // Emit event to frontend to open about modal
+                        let _ = app_handle.emit("open-about", ());
+                    }
+                });
+            }
+            
+            // Also handle menu events for all platforms as fallback
+            let app_handle_fallback = app.handle().clone();
+            app.on_menu_event(move |_app, event| {
+                let event_id = event.id.as_ref();
+                if event_id == "quit" || event_id.contains("quit") {
+                    println!("Fallback: Intercepting quit action, showing confirmation");
+                    let _ = app_handle_fallback.emit("window-close-requested", ());
+                }
+            });
+
             // Get window for all platforms
             let window = app.get_webview_window("main").unwrap();
 
             // Show and focus the window
             let _ = window.show();
             let _ = window.set_focus();
+
+            // Handle window close event - prevent default and emit event to frontend
+            let app_handle = app.handle().clone();
+            window.on_window_event(move |event| {
+                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                    // Prevent default close behavior
+                    api.prevent_close();
+                    // Emit event to frontend to show confirmation
+                    let _ = app_handle.emit("window-close-requested", ());
+                }
+            });
 
             // Apply window vibrancy effects based on platform
             #[cfg(target_os = "macos")]

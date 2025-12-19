@@ -20,33 +20,39 @@ Download the latest release from [GitHub Releases](https://github.com/youruserna
 - **Windows**: Download the `.msi` installer and run it
 - **Linux**: Download the `.AppImage` or `.deb` package for your distribution
 
-## Usage
+## How it works
 
 1. Select a source JSON file
-2. Choose an AI model
+2. Select an AI model
 3. Review and exclude nodes you don't want translated
 4. Select target languages
 5. Click Translate
+   - Your JSON is automatically converted to TOON (Token-Oriented Object Notation).
+     A more compact format that reduces API payload size and token usage, making translations faster and more cost-effective
+   - Large files are automatically split into smaller chunks, translated separately, and then merged back together to prevent timeouts and handle files of any size
 6. Files are saved to the location of the source file
 7. If any languages fail, they remain selected in the Language Selector so you can retry immediately after reviewing the errors
-8. After completion, you’ll see a summary of languages with warnings so you can inspect them before proceeding
+8. After completion, you'll see a summary of languages with warnings so you can inspect them before proceeding
 
 ## Settings
 
 Configure API keys and manage languages in Settings:
 
+- **App Settings Tab**: Change the app language
 - **Languages Tab**: Add, edit, or delete custom languages
 - **API Keys Tab**: Manage API keys for different providers
-
-
+- **Usage Tab**: View usage statistics and manage usage period
 
 ![screenshot-01](screenshot-01.png)
-> Lading file and JSON Structure 
+
+> Lading file and JSON Structure
 
 ![screenshot-02](screenshot-02.png)
-> Selecting languages 
+
+> Selecting languages
 
 ![screenshot-03](screenshot-03.png)
+
 > Translation progress and logs
 
 ## Development
@@ -69,6 +75,31 @@ pnpm tauri:dev
 # Build for production
 pnpm tauri:build
 ```
+
+### Adding new languages
+
+1. Add the language code to the `getAvailableLocales()` function in `lib/i18n/locale.ts`:
+
+```ts
+export function getAvailableLocales(): string[] {
+  return ["en_gb", "tr_tr", "your_locale_code"];
+}
+```
+
+2. Add the locale name mapping to the `getLocaleName()` function in the same file:
+
+```ts
+export function getLocaleName(locale: string): string {
+  const names: Record<string, string> = {
+    en_gb: "English (UK)",
+    tr_tr: "Türkçe (Turkish)",
+    your_locale_code: "Your Language Name",
+  };
+  return names[locale] || locale;
+}
+```
+
+3. Create a new JSON file in the `messages/` folder named `{locale_code}.json` (e.g., `en_us.json`) with the same structure as the existing language files. Copy the structure from `messages/en_gb.json` and translate all the values.
 
 ## Contributing
 

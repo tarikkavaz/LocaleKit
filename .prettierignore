@@ -1,0 +1,14 @@
+node_modules
+.next
+out
+dist
+build
+*.lock
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+.cache
+coverage
+.tauri
+src-tauri/target
+src-tauri/gen
