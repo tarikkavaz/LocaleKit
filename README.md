@@ -40,11 +40,11 @@ Configure API keys and manage languages in Settings:
 
 
 
-![screenshot-01](/Users/tarik/Work/Other/LocaleKit/screenshot-01.png)
+![screenshot-01](screenshot-01.png)
 
-![screenshot-02](/Users/tarik/Work/Other/LocaleKit/screenshot-02.png)
+![screenshot-02](screenshot-02.png)
 
-![screenshot-03](/Users/tarik/Work/Other/LocaleKit/screenshot-03.png)
+![screenshot-03](screenshot-03.png)
 
 ## Development
 
