@@ -36,6 +36,14 @@ Configure API keys and manage languages in Settings:
 - **Languages Tab**: Add, edit, or delete custom languages
 - **API Keys Tab**: Manage API keys for different providers
 
+
+
+![screenshot-01](/Users/tarik/Work/Other/LocaleKit/screenshot-01.png)
+
+![screenshot-02](/Users/tarik/Work/Other/LocaleKit/screenshot-02.png)
+
+![screenshot-03](/Users/tarik/Work/Other/LocaleKit/screenshot-03.png)
+
 ## Development
 
 ### Prerequisites
@@ -57,6 +65,19 @@ pnpm tauri:dev
 pnpm tauri:build
 ```
 
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature-name`
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
 ## License
 
-MIT
+MIT License
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/tarikkavaz/LocaleKit/issues)
+- **Releases**: [GitHub Releases](https://github.com/tarikkavaz/LocaleKit/releases)
