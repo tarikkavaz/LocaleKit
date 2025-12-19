@@ -43,7 +43,7 @@ export function getOSLocale(): string {
  * dynamically read from the messages/ directory
  */
 export function getAvailableLocales(): string[] {
-  return ["en_gb", "tr_tr"];
+  return ["en_gb", "tr_tr", "de_de", "fr_fr"];
 }
 
 /**

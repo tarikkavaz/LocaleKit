@@ -82,7 +82,7 @@ pnpm tauri:build
 
 ```ts
 export function getAvailableLocales(): string[] {
-  return ["en_gb", "tr_tr", "your_locale_code"];
+  return ["en_gb", "tr_tr", "de_de", "fr_fr", "your_locale_code"];
 }
 ```
 
@@ -93,11 +93,15 @@ export function getLocaleName(locale: string): string {
   const names: Record<string, string> = {
     en_gb: "English (UK)",
     tr_tr: "Türkçe (Turkish)",
+    de_de: "Deutsch (German)",
+    fr_fr: "Français (French)",
     your_locale_code: "Your Language Name",
   };
   return names[locale] || locale;
 }
 ```
+
+**Important**: You must update both functions. If you only add the locale to `getLocaleName()` but forget to add it to `getAvailableLocales()`, the language won't appear in the settings.
 
 3. Create a new JSON file in the `messages/` folder named `{locale_code}.json` (e.g., `en_us.json`) with the same structure as the existing language files. Copy the structure from `messages/en_gb.json` and translate all the values.
 
