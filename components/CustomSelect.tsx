@@ -37,10 +37,11 @@ export default function CustomSelect({
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
       const dropdownHeight = 200;
-      
-      const shouldPositionUp = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
+
+      const shouldPositionUp =
+        spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
       setPositionUp(shouldPositionUp);
-      
+
       setPosition({
         top: shouldPositionUp ? rect.top - dropdownHeight - 4 : rect.bottom + 4,
         left: rect.left,
@@ -146,7 +147,8 @@ export default function CustomSelect({
           />
         </button>
       </div>
-      {typeof document !== "undefined" && createPortal(dropdownContent, document.body)}
+      {typeof document !== "undefined" &&
+        createPortal(dropdownContent, document.body)}
     </>
   );
 }

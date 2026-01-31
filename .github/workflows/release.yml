@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: 'Branch or commit to build from'
+        description: "Branch or commit to build from"
         required: false
-        default: 'master'
+        default: "master"
 
 jobs:
   check-release:

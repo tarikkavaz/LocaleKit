@@ -17,16 +17,28 @@ import { getAvailableModels, type ModelInfo } from "@/lib/models";
 import type { Provider } from "@/lib/types";
 import { getAllLanguages, getLanguageByCode } from "@/lib/languages";
 import { jsonToToon } from "@/lib/toon";
+import {
+  startSession,
+  markLanguageComplete,
+  markLanguageFailed,
+  getActiveSession,
+  clearSession,
+  type TranslationSession,
+  TranslationErrorType,
+} from "@/lib/translation-session";
+import { TranslationError, classifyError } from "@/lib/translation-error";
 import DraggableHeader from "@/components/DraggableHeader";
 import JSONStructureViewer from "@/components/JSONStructureViewer";
 import LanguageSelector from "@/components/LanguageSelector";
 import InlineTranslationProgress from "@/components/InlineTranslationProgress";
+import ResumeSessionModal from "@/components/ResumeSessionModal";
 import { useTheme } from "@/lib/useTheme";
 import { useConsoleLogs } from "@/lib/useConsoleLogs";
 import SettingsModal from "@/components/SettingsModal";
 import { trackUsage, estimateTokens } from "@/lib/usage-tracker";
 import packageJson from "../package.json";
 import CustomSelect from "@/components/CustomSelect";
+import RetryFailedLanguages from "@/components/RetryFailedLanguages";
 
 interface TranslationResult {
   languageCode: string;
@@ -104,6 +116,17 @@ export default function HomePage() {
   const progressSectionRef = useRef<HTMLDivElement>(null);
   const [isReloadConfirmOpen, setIsReloadConfirmOpen] = useState(false);
   const [isQuitConfirmOpen, setIsQuitConfirmOpen] = useState(false);
+  const [activeSession, setActiveSession] = useState<TranslationSession | null>(
+    null
+  );
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [pendingSession, setPendingSession] =
+    useState<TranslationSession | null>(null);
+  const [chunkProgress, setChunkProgress] = useState({
+    currentChunk: 0,
+    totalChunks: 0,
+  });
+  const [showRetryButton, setShowRetryButton] = useState(false);
 
   // Initialize console logging (logs persist across component mounts)
   useConsoleLogs();
@@ -164,6 +187,136 @@ export default function HomePage() {
     });
   };
 
+  const handleContinueSession = async () => {
+    if (!pendingSession) return;
+
+    setShowResumeModal(false);
+    setIsLoading(true);
+    setError("");
+
+    try {
+      // Load the file content
+      const content = await invoke<string>("read_json_file", {
+        path: pendingSession.filePath,
+      });
+
+      const parsed = JSON.parse(content);
+      setJsonContent(parsed);
+      setSourceFilePath(pendingSession.filePath);
+
+      // Restore session state
+      setActiveSession(pendingSession);
+      setSelectedLanguages(pendingSession.pendingLanguages);
+
+      // Detect source language
+      const fileName = pendingSession.filePath.split(/[/\\]/).pop() || "";
+      const fileNameWithoutExt = fileName.replace(/\.json$/i, "");
+      const allLanguages = getAllLanguages();
+      let detectedLangCode: string | null = null;
+      for (const lang of allLanguages) {
+        if (fileNameWithoutExt.endsWith(`_${lang.code}`)) {
+          detectedLangCode = lang.code;
+          break;
+        }
+        if (fileNameWithoutExt === lang.code) {
+          detectedLangCode = lang.code;
+          break;
+        }
+      }
+      setSourceLanguageCode(detectedLangCode);
+
+      // Filter out source language from selection
+      if (detectedLangCode) {
+        setSelectedLanguages((prev) =>
+          prev.filter((code) => code !== detectedLangCode)
+        );
+      }
+    } catch (err) {
+      console.error("Error continuing session:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to continue session"
+      );
+    } finally {
+      setIsLoading(false);
+      setPendingSession(null);
+    }
+  };
+
+  const handleStartFresh = async () => {
+    if (!pendingSession) return;
+
+    setShowResumeModal(false);
+    setIsLoading(true);
+    setError("");
+
+    // Clear the session
+    clearSession(pendingSession.filePath);
+    setActiveSession(null);
+
+    try {
+      // Load the file content normally
+      const content = await invoke<string>("read_json_file", {
+        path: pendingSession.filePath,
+      });
+
+      const parsed = JSON.parse(content);
+      setJsonContent(parsed);
+      setSourceFilePath(pendingSession.filePath);
+
+      // Detect source language
+      const fileName = pendingSession.filePath.split(/[/\\]/).pop() || "";
+      const fileNameWithoutExt = fileName.replace(/\.json$/i, "");
+      const allLanguages = getAllLanguages();
+      let detectedLangCode: string | null = null;
+      for (const lang of allLanguages) {
+        if (fileNameWithoutExt.endsWith(`_${lang.code}`)) {
+          detectedLangCode = lang.code;
+          break;
+        }
+        if (fileNameWithoutExt === lang.code) {
+          detectedLangCode = lang.code;
+          break;
+        }
+      }
+      setSourceLanguageCode(detectedLangCode);
+
+      // Filter out source language from selection
+      if (detectedLangCode) {
+        setSelectedLanguages((prev) =>
+          prev.filter((code) => code !== detectedLangCode)
+        );
+      }
+    } catch (err) {
+      console.error("Error starting fresh:", err);
+      setError(err instanceof Error ? err.message : "Failed to load file");
+    } finally {
+      setIsLoading(false);
+      setPendingSession(null);
+    }
+  };
+
+  const handleRetryFailed = async () => {
+    if (!activeSession) return;
+
+    const failedLanguages = activeSession.failedLanguages;
+    if (failedLanguages.length === 0) return;
+
+    setShowResumeModal(false);
+
+    // Extract language codes from failed languages
+    const failedLanguageCodes = failedLanguages.map((f) => f.code);
+
+    // Update selected languages to only the failed ones
+    setSelectedLanguages(failedLanguageCodes);
+
+    // Clear the failed languages from the session
+    setActiveSession({
+      ...activeSession,
+      failedLanguages: [],
+      pendingLanguages: failedLanguageCodes,
+    });
+  };
+
   const handleSelectFile = async () => {
     try {
       setIsLoading(true);
@@ -191,6 +344,16 @@ export default function HomePage() {
       }
 
       setSourceFilePath(filePath);
+
+      // Check for existing session
+      const existingSession = getActiveSession(filePath);
+      if (existingSession && existingSession.pendingLanguages.length > 0) {
+        setPendingSession(existingSession);
+        setShowResumeModal(true);
+        // Don't load file content yet - wait for user decision
+        setIsLoading(false);
+        return;
+      }
 
       // Extract language code from filename if it matches pattern {name}_{langCode}.json
       const fileName = filePath.split(/[/\\]/).pop() || "";
@@ -276,6 +439,31 @@ export default function HomePage() {
     console.log(`[Translation] Excluded paths: ${excludedPaths.length}`);
     if (excludedPaths.length > 0) {
       console.log(`[Translation] Excluded paths:`, excludedPaths);
+    }
+
+    // Start or resume session
+    let session: TranslationSession | null = null;
+    if (sourceFilePath) {
+      const existingSession = getActiveSession(sourceFilePath);
+      if (existingSession) {
+        session = existingSession;
+        setActiveSession(session);
+        console.log(`[Translation] Resuming session: ${session.sessionId}`);
+        console.log(
+          `[Translation] Progress: ${session.completedLanguages.length}/${session.targetLanguages.length} completed, ${session.failedLanguages.length} failed, ${session.pendingLanguages.length} pending`
+        );
+      } else {
+        session = startSession(
+          sourceFilePath,
+          selectedLanguages,
+          model,
+          provider,
+          excludedPaths,
+          sourceLanguageCode
+        );
+        setActiveSession(session);
+        console.log(`[Translation] Started new session: ${session.sessionId}`);
+      }
     }
 
     setIsTranslating(true);
@@ -538,6 +726,7 @@ export default function HomePage() {
         });
 
         // Automatically save the file immediately after successful translation
+        let saveWarning: string | undefined;
         if (sourceFilePath && mergedJsonString) {
           try {
             // Get directory and extension from source file
@@ -561,8 +750,15 @@ export default function HomePage() {
             }
           } catch (saveErr) {
             console.error(`Failed to auto-save ${langCode}:`, saveErr);
+            saveWarning =
+              "File save failed - translation completed but not saved";
             // Don't fail the translation if save fails - user can save manually later
           }
+        }
+
+        // Mark language as complete in session
+        if (sourceFilePath) {
+          markLanguageComplete(sourceFilePath, langCode, saveWarning);
         }
 
         // Update progress after completing this language
@@ -594,38 +790,44 @@ export default function HomePage() {
           progress: ((i + 1) / selectedLanguages.length) * 100,
         });
       } catch (err) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Translation failed";
-        const isTimeout =
-          errorMessage.includes("timeout") ||
-          errorMessage.includes("timed out") ||
-          errorMessage.includes("Load failed");
-        const quotaLikely =
-          provider === "openai" &&
-          /quota|billing|usage limit|budget/i.test(errorMessage);
+        // Use TranslationError if available, otherwise classify the error
+        const translationErr =
+          err instanceof TranslationError
+            ? err
+            : classifyError(err, {
+                language: language?.name,
+                languageCode: langCode,
+                provider,
+                model,
+              });
 
-        console.error(`[Translation] Failed for ${langCode}:`, errorMessage);
+        // Extract error type for session tracking
+        const errorType = translationErr.type;
+
+        // Use the TranslationError's getUserMessage() for better error messages
+        const userErrorMessage = translationErr.getUserMessage();
+        const shortErrorMessage = translationErr.getShortMessage();
+
+        console.error(
+          `[Translation] Failed for ${langCode} (${errorType}):`,
+          translationErr.message
+        );
         console.error(`[Translation] Error details:`, err);
-        if (isTimeout) {
-          console.warn(
-            `[Translation] Timeout detected - file may be too large or API is slow`
-          );
-        }
-        if (quotaLikely) {
-          console.warn(
-            `[Translation] Possible OpenAI quota/budget limit reached. Check your usage/billing dashboard.`
-          );
-        }
+
+        // Mark language as failed in session
+        markLanguageFailed(
+          sourceFilePath || "",
+          langCode,
+          language?.name || langCode,
+          userErrorMessage,
+          errorType
+        );
 
         results.push({
           languageCode: langCode,
           translatedJson: "",
           success: false,
-          error: isTimeout
-            ? `Translation timed out. The file may be too large. Try excluding more paths or using a faster model.`
-            : quotaLikely
-              ? `OpenAI may have hit a quota/budget limit. Check billing/usage.`
-              : errorMessage,
+          error: userErrorMessage,
         });
 
         // Track failed attempt
@@ -639,7 +841,7 @@ export default function HomePage() {
           totalTokens: inputTokensEstimate,
           duration: Date.now() - startTime,
           success: false,
-          error: errorMessage,
+          error: shortErrorMessage,
         });
 
         // Update progress even on failure
@@ -949,6 +1151,13 @@ export default function HomePage() {
         </div>
       )}
 
+      <ResumeSessionModal
+        isOpen={showResumeModal}
+        session={pendingSession}
+        onContinue={handleContinueSession}
+        onStartFresh={handleStartFresh}
+      />
+
       <main className="h-screen flex justify-center p-6 bg-transparent pt-24 transition-colors overflow-auto">
         <div className="w-full max-w-4xl space-y-6">
           {/* File Selection */}
@@ -1064,6 +1273,17 @@ export default function HomePage() {
               progress={translationProgress.progress}
               isTranslating={isTranslating}
             />
+            {!isTranslating && translationProgress.failed.length > 0 && (
+              <RetryFailedLanguages
+                failedLanguages={translationProgress.failed}
+                onRetry={handleRetryFailed}
+                onClear={() => {
+                  setSelectedLanguages([]);
+                  setShowRetryButton(false);
+                }}
+                t={t}
+              />
+            )}
           </div>
         </div>
       </main>

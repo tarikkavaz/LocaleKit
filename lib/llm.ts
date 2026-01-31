@@ -12,6 +12,11 @@ import { isValidOpenAIModel, getModelInfo } from "./models";
 import { jsonToToon, toonToJson } from "./toon";
 import { estimateTokens } from "./usage-tracker";
 import { chunkJson, mergeChunks } from "./chunking";
+import {
+  classifyError,
+  createChunkFailedError,
+  TranslationError,
+} from "./translation-error";
 
 /**
  * Unified Translator using Vercel AI SDK
@@ -449,9 +454,13 @@ export class UnifiedTranslator implements Translator {
     input: TranslationInput,
     model: string
   ): Promise<TranslationResult> {
-    // Split into smaller chunks to stay comfortably under 60s webview limit
-    const CHUNK_SIZE_BYTES = 3 * 1024; // ~3KB per chunk to minimize truncation risk
-    const chunks = chunkJson(jsonObj, CHUNK_SIZE_BYTES, input.excludedPaths);
+    // Auto-detect optimal chunk size based on complexity, language, and provider
+    const chunks = chunkJson(jsonObj, {
+      targetLanguage: input.targetLanguage,
+      provider: this.provider as Provider,
+      model: model,
+      excludedPaths: input.excludedPaths,
+    });
     console.log(`[LLM] Split into ${chunks.length} chunks`);
 
     const translatedChunks: Array<{ key: string; data: any }> = [];
@@ -472,17 +481,21 @@ export class UnifiedTranslator implements Translator {
         `[LLM] Translating chunk ${i + 1}/${chunks.length} (key: ${chunk.key}, size: ${(chunk.size / 1024).toFixed(2)} KB)`
       );
 
-      const MAX_RETRIES = 2; // Retry up to 2 times
+      const MAX_RETRIES = 3; // Increased from 2 to 3 for better reliability
       let chunkTranslated = false;
 
       for (let retry = 0; retry <= MAX_RETRIES; retry++) {
         try {
           if (retry > 0) {
+            // Exponential backoff with jitter: 1s, 2s, 4s, 8s + random 0-500ms
+            const baseDelay = Math.pow(2, retry - 1) * 1000;
+            const jitter = Math.floor(Math.random() * 500);
+            const delay = baseDelay + jitter;
+
             console.log(
-              `[LLM] Retrying chunk ${i + 1} (attempt ${retry + 1}/${MAX_RETRIES + 1})...`
+              `[LLM] Retrying chunk ${i + 1} (attempt ${retry + 1}/${MAX_RETRIES + 1}) after ${delay}ms...`
             );
-            // Wait a bit before retrying
-            await new Promise((resolve) => setTimeout(resolve, 1000 * retry));
+            await new Promise((resolve) => setTimeout(resolve, delay));
           }
 
           const toonContent = jsonToToon(chunk.data);

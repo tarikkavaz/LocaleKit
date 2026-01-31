@@ -3,21 +3,61 @@
  * to avoid webview timeout limitations
  */
 
+import type { Provider } from "./types";
+import { calculateChunkSize } from "./complexity-analyzer";
+
 export interface Chunk {
   key: string; // Top-level key or array index range
   data: any;
   size: number; // Approximate size in bytes
 }
 
+export interface ChunkingOptions {
+  maxChunkSizeBytes?: number; // Optional: auto-detected if not provided
+  targetLanguage?: string; // For complexity calculation
+  provider?: Provider; // For complexity calculation
+  model?: string; // For complexity calculation
+  excludedPaths?: string[];
+}
+
 /**
  * Split a JSON object into chunks based on size limit
  * Splits at top level only for simplicity and reliability
+ *
+ * If maxChunkSizeBytes is not provided, it will be auto-detected based on
+ * JSON complexity, target language, and provider/model
  */
 export function chunkJson(
   jsonObj: any,
-  maxChunkSizeBytes: number = 27000, // ~27KB per chunk after TOON size reduction
-  excludedPaths: string[] = []
+  options: ChunkingOptions = {}
 ): Chunk[] {
+  let maxChunkSizeBytes = options.maxChunkSizeBytes;
+  const excludedPaths = options.excludedPaths ?? [];
+
+  // Auto-detect chunk size if not provided
+  if (
+    maxChunkSizeBytes === undefined &&
+    options.targetLanguage &&
+    options.provider &&
+    options.model
+  ) {
+    const { size, score } = calculateChunkSize(
+      jsonObj,
+      options.targetLanguage,
+      options.provider,
+      options.model
+    );
+    maxChunkSizeBytes = size;
+    console.log(
+      `[Chunking] Auto-detected chunk size: ${(size / 1024).toFixed(1)}KB (complexity: ${score}/100)`
+    );
+  } else {
+    maxChunkSizeBytes = maxChunkSizeBytes ?? 8192; // Default 8KB
+    console.log(
+      `[Chunking] Using fixed chunk size: ${(maxChunkSizeBytes / 1024).toFixed(1)}KB`
+    );
+  }
+
   const chunks: Chunk[] = [];
 
   // Helper to check if a path should be excluded (exact match only)
